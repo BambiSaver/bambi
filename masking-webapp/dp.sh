@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# call script in this console to define the ftp_user and ftp_password environment variables
+. ./.dp-ftp-config.sh
+
+
 # retrieve the absolute path of this script in a portable manner
 BASE_DIR=$(cd $(dirname "$0") && pwd)
 
