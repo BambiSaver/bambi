@@ -130,7 +130,8 @@
               }
           },
           validation: {
-              allowedExtensions: ['jpeg', 'jpg', 'gif', 'png']
+              allowedExtensions: ['jpeg', 'jpg', 'gif', 'png'],
+              sizeLimit: 15728640 // 15 MB = 15 * 1024 * 1024 bytes
           }
       });
   </script>
