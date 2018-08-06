@@ -18,7 +18,7 @@ wstool init src
 
 # install stuff
 sudo apt-get install python-catkin-tools -y
-rosdep install --from install --from-paths src --ingor-src -y
+rosdep install --from src --from-paths src --ignore-src -y
 src/mavros/install_geographiclib_datasets.sh
 
 

@@ -1,7 +1,3 @@
-[submodule "src/mavlink"]
-	path = src/mavlink
-	url = git@github.com:BambiSaver/mavlink-gbp-release.git
-	branch = release/kinetic/mavlink
 [submodule "src/mavros"]
 	path = src/mavros
 	url = git@github.com:BambiSaver/mavros.git
