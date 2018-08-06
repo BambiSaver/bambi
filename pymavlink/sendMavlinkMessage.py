@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # Import mavutil
+import sys
 from time import sleep
 from pymavlink import mavutil
 
@@ -14,12 +15,16 @@ master.wait_heartbeat()
 print "Heartbeat received, sending message now"
 #print mavutil.mavlink.MAVLINK_MSG_ID_SET_MODE
 
+print "TARGET (", master.target_system, ", ", 240, ")"
+
 # Arm
 # master.arducopter_arm() or:
 master.mav.command_long_send(
     master.target_system,
-    master.target_component,
-    mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
+#    master.target_component,
+    240,
+#    mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
+    2720,
     0,
     1, 0, 0, 0, 0, 0, 0);
 
@@ -44,6 +49,8 @@ while not ack:
     break
 
 
+
+sys.exit(0);
 
 sleep(5);
 
