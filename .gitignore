@@ -1,7 +1,10 @@
 masking-webapp/.dp-ftp-config.sh
 devel/
 logs/
-build/
+build/*
+!build/mavlink
+build/mavlink/*
+!build/mavlink/include
 bin/
 msg_gen/
 srv_gen/
