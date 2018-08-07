@@ -24,11 +24,35 @@
 #ifndef MISSIONCONTROLLERSTATEMACHINE_H
 #define MISSIONCONTROLLERSTATEMACHINE_H
 
+#include "mcpublisher.h"
+#include <mavros_msgs/BambiMissionTrigger.h>
 
-class MissionControllerStateMachine
+namespace bambi {
+namespace missioncontroller {
+
+class StateMachine
 {
 public:
-    MissionControllerStateMachine();
+    StateMachine(const MCPublisher &publisher);
+
+    void missionTriggerReceived (const mavros_msgs::BambiMissionTrigger& msg);
+
+    enum class State {
+        READY,
+        TAKE_OFF_SENT,
+        TAKE_OFF_POSITION_REACHED,
+        GOING_TO_MISSION_BASE_POINT,
+        MISSION_BASE_POINT_REACHED,
+        SHUTTER_TRIGGERED,
+        ORTHO_PHOTO_RECEIVED,
+    };
+
+private:
+    State m_state;
+    MCPublisher m_publisher;
 };
+
+}
+}
 
 #endif // MISSIONCONTROLLERSTATEMACHINE_H

@@ -3,7 +3,6 @@ devel/
 logs/
 build/
 bin/
-lib/
 msg_gen/
 srv_gen/
 msg/*Action.msg
@@ -53,3 +52,4 @@ CATKIN_IGNORE
 
 .catkin_tools/
 src/.rosinstall
+*.autosave

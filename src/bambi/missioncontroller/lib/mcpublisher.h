@@ -1,7 +1,7 @@
 /*
- * missioncontrollerstatemachine.cpp
+ * publisher.h
  *
- * Created: 07 2018 by Florian Mahlknecht <m@florian.world>
+ * Created: 2018/08/07 by Florian Mahlknecht <m@florian.world>
  *
  * Copyright 2018 Michael Rimondi and Florian Mahlknecht
  *
@@ -21,9 +21,27 @@
  * along with BAMBI. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#include "missioncontrollerstatemachine.h"
+#ifndef PUBLISHER_H
+#define PUBLISHER_H
 
-MissionControllerStateMachine::MissionControllerStateMachine()
+#include <ros/ros.h>
+
+namespace bambi {
+namespace missioncontroller {
+
+class MCPublisher
 {
+public:
+  MCPublisher(const ros::NodeHandle& missioncontrollerNodeHandle);
 
-}
+  void takeOff(int overGroundOffsetInMeters);
+
+private:
+  ros::NodeHandle m_mcNodeHandle;
+  ros::Publisher m_statusTextPublisher;
+};
+
+} // namespace missioncontroller
+} // namespace bambi
+
+#endif // PUBLISHER_H
