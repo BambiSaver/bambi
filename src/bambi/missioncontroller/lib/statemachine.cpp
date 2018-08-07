@@ -23,16 +23,27 @@
  */
 #include "statemachine.h"
 
+#include <mavros_msgs/BambiMissionTrigger.h>
+
+
 using namespace bambi::missioncontroller;
 
 
 StateMachine::StateMachine(const MCPublisher &publisher) :
   m_state(State::READY),
-  m_publisher(publisher) {
+  m_publisher(publisher)
+{
   
 }
 
-void StateMachine::missionTriggerReceived(const mavros_msgs::BambiMissionTrigger &msg) {
-  
+void StateMachine::missionTriggerReceived(const mavros_msgs::BambiMissionTrigger &msg)
+{
+  m_publisher.takeOff(5);
+}
+
+void StateMachine::uavStateChange(const mavros_msgs::State &msg)
+{
+  ROS_INFO("State update received (Mode: %s)", msg.mode.c_str());
+  m_uavState = msg;
 }
 

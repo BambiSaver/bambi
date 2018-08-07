@@ -25,7 +25,10 @@
 #define MISSIONCONTROLLERSTATEMACHINE_H
 
 #include "mcpublisher.h"
+
+#include <mavros_msgs/State.h>
 #include <mavros_msgs/BambiMissionTrigger.h>
+
 
 namespace bambi {
 namespace missioncontroller {
@@ -36,6 +39,7 @@ public:
     StateMachine(const MCPublisher &publisher);
 
     void missionTriggerReceived (const mavros_msgs::BambiMissionTrigger& msg);
+    void uavStateChange(const mavros_msgs::State& msg);
 
     enum class State {
         READY,
@@ -50,6 +54,7 @@ public:
 private:
     State m_state;
     MCPublisher m_publisher;
+    mavros_msgs::State m_uavState;
 };
 
 }

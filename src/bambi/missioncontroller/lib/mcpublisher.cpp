@@ -23,6 +23,8 @@
  */
 #include "mcpublisher.h"
 #include <mavros_msgs/StatusText.h>
+#include <mavros_msgs/CommandTOL.h>
+#include <mavros_msgs/CommandBool.h>
 
 using namespace bambi::missioncontroller;
 
@@ -39,5 +41,30 @@ void MCPublisher::takeOff(int overGroundOffsetInMeters)
   statusText.text = "Taking off";
   
   m_statusTextPublisher.publish(statusText);
+  
+  
+  
+  
+  mavros_msgs::CommandBool commandBool;
+  commandBool.request.value = true;
+  
+  ROS_INFO("SENDING ARMING MESSAGE");
+  
+  if (ros::service::call("/mavros/cmd/arming", commandBool)) {
+    ROS_INFO("ARMING CALL RETURNED %s", commandBool.response.success ? "successfully" : "failed");
+  }
+  
+  
+  mavros_msgs::CommandTOL commandTOL;
+  commandTOL.request.latitude = std::numeric_limits<float>::quiet_NaN();
+  commandTOL.request.longitude = std::numeric_limits<float>::quiet_NaN();
+  commandTOL.request.altitude = 1430;
+  ROS_INFO("SENDING TAKEOFF MESSAGE");
+  
+  if (ros::service::call("/mavros/cmd/takeoff", commandTOL)) {
+    ROS_INFO("TAKE OFF CALL RETURNED %s", commandTOL.response.success ? "successfully" : "failed");
+  }
+  
+  //"/mavros/cmd/arming"
 }
 

@@ -11,6 +11,7 @@ master = mavutil.mavlink_connection('udp:127.0.0.1:14540')
 # Get some information !
 while True:
     try:
-        print(master.recv_match().to_dict())
+        msg = master.recv_match();
+        print("%s %s", msg.get_type(), msg.to_dict())
     except:
         pass
