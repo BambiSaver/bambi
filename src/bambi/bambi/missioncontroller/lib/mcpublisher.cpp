@@ -44,9 +44,14 @@ void MCPublisher::takeOff(int overGroundOffsetInMeters)
   
   m_statusTextPublisher.publish(statusText);
   
+  bambi_msgs::Field bambiField;
+  
+  geographic_msgs::GeoPoint gp;
+  
+  
   mavros_msgs::CommandBool commandBool;
   commandBool.request.value = true;
-
+  
   ROS_INFO("SENDING ARMING MESSAGE");
   
   if (ros::service::call("/mavros/cmd/arming", commandBool)) {
@@ -82,5 +87,6 @@ void MCPublisher::takeOff(int overGroundOffsetInMeters)
     ROS_INFO("TAKE OFF CALL RETURNED %s", commandLong.response.success ? "successfully" : "failed");
   }
   
+  //"/mavros/cmd/arming"
 }
 
