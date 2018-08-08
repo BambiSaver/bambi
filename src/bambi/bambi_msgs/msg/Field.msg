@@ -1,0 +1,1 @@
+bambi_msgs/GeoPosition2D[] boundary_path

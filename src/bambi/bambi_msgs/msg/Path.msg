@@ -1,0 +1,1 @@
+bambi_msgs/GeoPositionWithRelativeAltitude[] geometric_path

@@ -1,0 +1,2 @@
+bambi_msgs/GeoPosition2D geopos_2d
+uint32 altitude_over_ground_in_mm

@@ -1,9 +1,9 @@
 /*
- * %FILENAME%
+ * flight_controller.cpp
  *
- * Created: %YEAR%/%MONTH%/%DAY% by %$AUTHOR%
+ * Created: 2018/8/8 by Florian Mahlknecht <m@florian.world>
  *
- * Copyright %YEAR% Michael Rimondi and Florian Mahlknecht
+ * Copyright 2018 Michael Rimondi and Florian Mahlknecht
  *
  *
  * This file is part of BAMBI.
@@ -21,3 +21,22 @@
  * along with BAMBI. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#include <ros/ros.h>
+#include "lib/flightcontrollernode.h"
+
+using namespace bambi::flight_controller;
+
+int main(int argc, char **argv)
+{
+  ros::init(argc, argv, "bambi_flight_controller");
+  ros::NodeHandle nh;
+  FlightControllerNode node(nh);
+  
+  
+  
+  ROS_INFO("Flight Controller STARTUP");
+
+  node.spin();
+  
+  return 0;
+}

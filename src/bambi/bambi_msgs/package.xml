@@ -21,6 +21,7 @@
     <exec_depend>message_runtime</exec_depend>
     
     <depend>geographic_msgs</depend>
+    <depend>mavros_msgs</depend>
     
 
 </package>

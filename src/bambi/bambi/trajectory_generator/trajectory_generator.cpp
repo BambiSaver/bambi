@@ -1,9 +1,9 @@
 /*
- * %FILENAME%
+ * trajectory_generator.cpp
  *
- * Created: %YEAR%/%MONTH%/%DAY% by %$AUTHOR%
+ * Created: 2018/8/8 by Florian Mahlknecht <m@florian.world>
  *
- * Copyright %YEAR% Michael Rimondi and Florian Mahlknecht
+ * Copyright 2018 Michael Rimondi and Florian Mahlknecht
  *
  *
  * This file is part of BAMBI.
@@ -21,3 +21,21 @@
  * along with BAMBI. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#include <ros/ros.h>
+
+int main(int argc, char **argv)
+{
+  ros::init(argc, argv, "bambi_trajectory_generator");
+  ros::NodeHandle nh;
+  
+  
+  
+  //ros::Subscriber s1 = nh.subscribe("/mavros/bambi/missiontrigger", 10, cb_missionTriggerReceived);
+  
+  ROS_INFO("Trajectory Generator STARTUP");
+
+  while(ros::ok()) {
+    ros::spinOnce();
+  }
+  return 0;
+}
