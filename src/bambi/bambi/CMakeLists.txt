@@ -73,6 +73,7 @@ target_link_libraries(${PROJECT_NAME}_flight_controller ${PROJECT_NAME} ${catkin
 ## in contrast to setup.py, you can choose the destination
 install(PROGRAMS
    scripts/optical_cam/optical_cam
+   scripts/boundary_generator/boundary_generator
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
