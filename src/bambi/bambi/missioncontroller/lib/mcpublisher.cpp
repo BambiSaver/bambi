@@ -23,7 +23,7 @@
  */
 #include "mcpublisher.h"
 #include <mavros_msgs/StatusText.h>
-#include <mavros_msgs/CommandTOL.h>
+#include <mavros_msgs/CommandLong.h>
 #include <mavros_msgs/CommandBool.h>
 #include <bambi_msgs/BambiField.h>
 
@@ -44,11 +44,11 @@ void MCPublisher::takeOff(int overGroundOffsetInMeters)
   m_statusTextPublisher.publish(statusText);
   
   bambi_msgs::BambiField bambiField;
-  
-  
+
+
   mavros_msgs::CommandBool commandBool;
   commandBool.request.value = true;
-  
+
   ROS_INFO("SENDING ARMING MESSAGE");
   
   if (ros::service::call("/mavros/cmd/arming", commandBool)) {
@@ -56,16 +56,33 @@ void MCPublisher::takeOff(int overGroundOffsetInMeters)
   }
   
   
-  mavros_msgs::CommandTOL commandTOL;
-  commandTOL.request.latitude = std::numeric_limits<float>::quiet_NaN();
-  commandTOL.request.longitude = std::numeric_limits<float>::quiet_NaN();
-  commandTOL.request.altitude = 1430;
+  mavros_msgs::CommandLong commandLong;
+//  commandLong.request = {
+//    false,                                      //broadcast =False
+//    24,                                         // MAV_CMD_NAV_TAKEOFF_LOCAL
+//    0,                                          //confirmation = 0 => first transmission of the command
+//    0,                                          //minimum picth
+//    0,                                          //empty
+//    5,                                          //ascend rate m/s
+//    std::numeric_limits<float>::quiet_NaN(),    //yaw
+//    0,                                          //x
+//    0,                                          //y
+//    10                                          //z
+//  };
+
+  commandLong.request.command = 24;                                     //MAV_CMD_NAV_TAKEOFF_LOCAL
+  commandLong.request.param3 = 5;                                       //ascend rate [m/s]
+  commandLong.request.param4 = std::numeric_limits<float>::quiet_NaN(); //(yaw angle is unchanged)
+  commandLong.request.param7 = 10;                                      // //local z target (relative altitude)
+  //  mavros_msgs::CommandBool commandTOL;
+//  commandTOL.request.latitude = std::numeric_limits<float>::quiet_NaN();
+//  commandTOL.request.longitude = std::numeric_limits<float>::quiet_NaN();
+//  commandTOL.request.altitude = 1430;
   ROS_INFO("SENDING TAKEOFF MESSAGE");
   
-  if (ros::service::call("/mavros/cmd/takeoff", commandTOL)) {
-    ROS_INFO("TAKE OFF CALL RETURNED %s", commandTOL.response.success ? "successfully" : "failed");
+  if (ros::service::call("/mavros/cmd/command",commandLong)) {
+    ROS_INFO("TAKE OFF CALL RETURNED %s", commandLong.response.success ? "successfully" : "failed");
   }
   
-  //"/mavros/cmd/arming"
 }
 
