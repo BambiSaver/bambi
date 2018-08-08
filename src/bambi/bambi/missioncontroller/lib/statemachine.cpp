@@ -47,6 +47,7 @@ void StateMachine::cb_mission_trigger_received(const mavros_msgs::BambiMissionTr
     //TODO: get alt_offset from BambiMissionTrigger msg
     float alt_offset = 10.f;
     m_publisher.takeOff(m_altitude+alt_offset);
+    ROS_INFO("--BAMBI--  Target Takeoff altitude %f", m_altitude+alt_offset);
 }
 
 void StateMachine::cb_uav_state_change(const mavros_msgs::State &msg)
