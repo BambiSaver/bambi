@@ -25,7 +25,8 @@
 #include <mavros_msgs/StatusText.h>
 #include <mavros_msgs/CommandTOL.h>
 #include <mavros_msgs/CommandBool.h>
-#include <bambi_msgs/BambiField.h>
+#include <bambi_msgs/Field.h>
+#include <geographic_msgs/GeoPoint.h>
 
 using namespace bambi::missioncontroller;
 
@@ -43,7 +44,9 @@ void MCPublisher::takeOff(int overGroundOffsetInMeters)
   
   m_statusTextPublisher.publish(statusText);
   
-  bambi_msgs::BambiField bambiField;
+  bambi_msgs::Field bambiField;
+  
+  geographic_msgs::GeoPoint gp;
   
   
   mavros_msgs::CommandBool commandBool;

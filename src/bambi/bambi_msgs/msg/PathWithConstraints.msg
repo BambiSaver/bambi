@@ -1,0 +1,2 @@
+bambi_msgs/Path path
+bambi_msgs/DynamicFlightConstraints flight_constraints
