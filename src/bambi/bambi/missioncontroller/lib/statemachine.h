@@ -28,7 +28,7 @@
 
 #include <mavros_msgs/State.h>
 #include <mavros_msgs/BambiMissionTrigger.h>
-
+#include <sensor_msgs/NavSatFix.h>
 
 namespace bambi {
 namespace missioncontroller {
@@ -38,9 +38,9 @@ class StateMachine
 public:
     StateMachine(const MCPublisher &publisher);
 
-    void missionTriggerReceived (const mavros_msgs::BambiMissionTrigger& msg);
-    void uavStateChange(const mavros_msgs::State& msg);
-
+    void cb_mission_trigger_received (const mavros_msgs::BambiMissionTrigger& msg);
+    void cb_uav_state_change(const mavros_msgs::State& msg);
+    void cb_update_altitude(const sensor_msgs::NavSatFix& navSatFix);
     enum class State {
         READY,
         TAKE_OFF_SENT,
@@ -55,6 +55,11 @@ private:
     State m_state;
     MCPublisher m_publisher;
     mavros_msgs::State m_uavState;
+
+    //Altitude [m]. Positive is above the WGS 84 ellipsoid
+    // (quiet NaN if no altitude is available).
+    // updated each time FCU sends GPS fix data
+    float m_altitude;
 };
 
 }
