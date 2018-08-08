@@ -49,8 +49,7 @@ int main(int argc, char **argv)
   
   ROS_INFO("Mission Controller STARTUP");
 
-  while(ros::ok()) {
-    ros::spinOnce();
-  }
+  ros::spin();
+  
   return 0;
 }
