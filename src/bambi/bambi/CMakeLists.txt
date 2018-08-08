@@ -33,15 +33,15 @@ include_directories(
 
 # Declare a C++ library
 add_library(${PROJECT_NAME}
-   missioncontroller/lib/statemachine.cpp
-   missioncontroller/lib/mcpublisher.cpp
-   flight_controller/lib/flightcontrollernode.cpp
+   src/missioncontroller/lib/statemachine.cpp
+   src/missioncontroller/lib/mcpublisher.cpp
+   src/flight_controller/lib/flightcontrollernode.cpp
 )
 
-add_executable(${PROJECT_NAME}_missioncontroller missioncontroller/missioncontroller.cpp)
-add_executable(${PROJECT_NAME}_coverage_path_planner coverage_path_planner/coverage_path_planner.cpp)
-add_executable(${PROJECT_NAME}_trajectory_generator trajectory_generator/trajectory_generator.cpp)
-add_executable(${PROJECT_NAME}_flight_controller flight_controller/flight_controller.cpp)
+add_executable(${PROJECT_NAME}_missioncontroller src/missioncontroller/missioncontroller.cpp)
+add_executable(${PROJECT_NAME}_coverage_path_planner src/coverage_path_planner/coverage_path_planner.cpp)
+add_executable(${PROJECT_NAME}_trajectory_generator src/trajectory_generator/trajectory_generator.cpp)
+add_executable(${PROJECT_NAME}_flight_controller src/flight_controller/flight_controller.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
