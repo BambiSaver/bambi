@@ -22,6 +22,7 @@
     
     <depend>geographic_msgs</depend>
     <depend>mavros_msgs</depend>
+    <depend>rospy</depend>
     
 
 </package>

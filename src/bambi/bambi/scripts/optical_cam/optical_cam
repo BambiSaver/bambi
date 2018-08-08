@@ -1,0 +1,44 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import roslib
+roslib.load_manifest('bambi_msgs')
+import rospy
+import sys
+
+
+from bambi_msgs.msg import OrthoPhoto
+from std_msgs.msg import Bool
+
+
+class OrthoPhotoNode():
+    
+    def __init__(self):
+        self.m_orthoPhotoPublisher = rospy.Publisher("~orthophoto_ready",
+                                                    OrthoPhoto, queue_size=5)
+
+        rospy.Subscriber('/bambi_missioncontroller/trigger_shutter', Bool, self.cb_shutter_trigger)
+
+        rospy.spin()
+
+        
+    def cb_shutter_trigger(self, Bool):
+        # Set the message to publish as our custom message.
+        msg = OrthoPhoto()
+        # Initialize message variables.
+        msg.filenameWithFullPath = "/home/flo/test.jpg"
+
+        self.m_orthoPhotoPublisher.publish(msg)
+
+
+
+# Main function.
+if __name__ == '__main__':
+    # Initialize the node and name it.
+    rospy.init_node('bambi_optical_cam')
+
+    rospy.loginfo("OrthoPhoto STARTUP")
+    # Go to class functions that do all the heavy lifting. Do error checking.
+    try:
+        orthoPhotoNode = OrthoPhotoNode()
+    except rospy.ROSInterruptException: pass
