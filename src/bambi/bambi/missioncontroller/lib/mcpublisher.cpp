@@ -25,6 +25,7 @@
 #include <mavros_msgs/StatusText.h>
 #include <mavros_msgs/CommandTOL.h>
 #include <mavros_msgs/CommandBool.h>
+#include <bambi_msgs/BambiField.h>
 
 using namespace bambi::missioncontroller;
 
@@ -42,7 +43,7 @@ void MCPublisher::takeOff(int overGroundOffsetInMeters)
   
   m_statusTextPublisher.publish(statusText);
   
-  
+  bambi_msgs::BambiField bambiField;
   
   
   mavros_msgs::CommandBool commandBool;

@@ -12,6 +12,7 @@ set(CMAKE_BUILD_TYPE Debug)
 find_package(catkin REQUIRED COMPONENTS
     roscpp
     mavros_msgs
+    bambi_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -106,7 +107,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS 
   LIBRARIES bambi
-  CATKIN_DEPENDS mavros_msgs
+  CATKIN_DEPENDS mavros_msgs bambi_msgs
   DEPENDS
 )
 
