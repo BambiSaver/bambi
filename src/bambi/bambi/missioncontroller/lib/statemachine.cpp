@@ -36,14 +36,27 @@ StateMachine::StateMachine(const MCPublisher &publisher) :
   
 }
 
-void StateMachine::missionTriggerReceived(const mavros_msgs::BambiMissionTrigger &msg)
+void StateMachine::cb_mission_trigger_received(const mavros_msgs::BambiMissionTrigger &msg)
 {
-  m_publisher.takeOff(5);
+  //TODO : handle different Bambi mission trigger modes other then start one
+    //flo parla di switch-case che risolvono la matrice della state machine
+    //ricordiamoci, nella state machine,di aspettare che il GPS abbia fatto il fix prima di lanciare il takeoff
+    //sembra che mavros publichi i messaggi su /global_position/global solo dopo che il GPS abbia fatto il fix
+
+
+    //TODO: get alt_offset from BambiMissionTrigger msg
+    float alt_offset = 10.f;
+    m_publisher.takeOff(m_altitude+alt_offset);
 }
 
-void StateMachine::uavStateChange(const mavros_msgs::State &msg)
+void StateMachine::cb_uav_state_change(const mavros_msgs::State &msg)
 {
-  ROS_INFO("State update received (Mode: %s)", msg.mode.c_str());
-  m_uavState = msg;
+    ROS_INFO("State update received (Mode: %s)", msg.mode.c_str());
+    m_uavState = msg;
+}
+
+void StateMachine::cb_update_altitude(const sensor_msgs::NavSatFix &navSatFix)
+{
+    m_altitude = static_cast<float>(navSatFix.altitude);
 }
 

@@ -37,13 +37,13 @@ int main(int argc, char **argv)
   
   MCPublisher mcpublisher(nh);
   StateMachine stateMachine(mcpublisher);
-  
   ros::Subscriber s1 = nh.subscribe("/mavros/bambi/missiontrigger", 10,
-               &StateMachine::missionTriggerReceived, &stateMachine);
+               &StateMachine::cb_mission_trigger_received, &stateMachine);
   ros::Subscriber s2 = nh.subscribe("/mavros/state", 10,
-               &StateMachine::uavStateChange, &stateMachine);
-  
-  
+               &StateMachine::cb_uav_state_change, &stateMachine);
+  ros::Subscriber s3 = nh.subscribe("/mavros/global_position/global",10,
+                                    &StateMachine::cb_update_altitude, &stateMachine);
+
   //ROS_INFO("Subscriber topic: %s, count: %d", s1.getTopic().c_str(), s1.getNumPublishers());
   //ROS_INFO("Subscriber topic: %s, count: %d", s2.getTopic().c_str(), s2.getNumPublishers());
   
