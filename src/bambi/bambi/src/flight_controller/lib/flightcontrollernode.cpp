@@ -61,8 +61,7 @@ void FlightControllerNode::cb_hovering_position(const mavros_msgs::GlobalPositio
 }
 
 void FlightControllerNode::spin() {
-  while(ros::ok()) {
-    ros::spinOnce();
+    ros::spin();
   }
-}
+
 

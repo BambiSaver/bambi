@@ -37,6 +37,8 @@ add_library(${PROJECT_NAME}
    src/lib/utilities.cpp
    src/missioncontroller/lib/mcpublisher.cpp
    src/flight_controller/lib/flightcontrollernode.cpp
+   src/coverage_path_planner/lib/coveragepathplannernode.cpp
+   src/trajectory_generator/lib/trajectorygeneratornode.cpp
 )
 
 add_executable(${PROJECT_NAME}_missioncontroller src/missioncontroller/missioncontroller.cpp)

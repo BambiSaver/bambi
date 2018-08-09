@@ -22,20 +22,19 @@
  *
  */
 #include <ros/ros.h>
+#include "lib/trajectorygeneratornode.h"
 
+
+using namespace bambi::trajectory_generator;
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "bambi_trajectory_generator");
   ros::NodeHandle nh;
-  
-  
-  
-  //ros::Subscriber s1 = nh.subscribe("/mavros/bambi/missiontrigger", 10, cb_missionTriggerReceived);
-  
+  TrajectoryGeneratorNode node(nh);
   ROS_INFO("Trajectory Generator STARTUP");
+  node.spin();
 
-  while(ros::ok()) {
-    ros::spinOnce();
-  }
+
+
   return 0;
 }
