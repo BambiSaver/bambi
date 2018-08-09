@@ -37,7 +37,7 @@ FlightControllerNode::FlightControllerNode(const ros::NodeHandle &nodeHandle)
         "/bambi/mission_controller/trigger_hover", 5,
        &FlightControllerNode::cb_trigger_hover, this);
   
-  m_subscriberHoverTrigger = m_nodeHandle.subscribe(
+  m_subscriberHoveringPosition = m_nodeHandle.subscribe(
         "/bambi/mission_controller/hovering_position", 500,
        &FlightControllerNode::cb_hovering_position, this);
   
