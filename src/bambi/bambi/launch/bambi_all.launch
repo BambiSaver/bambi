@@ -23,8 +23,8 @@
        <node pkg="bambi" type="flight_controller" name="flight_controller" ns="bambi">
          </node>
 
-<!-- Run mission_controller node under "bambi" namespace -->
-       <node pkg="bambi" type="mission_controller" name="mission_controller" ns="bambi">
+<!-- Run missioncontroller node under "bambi" namespace -->
+       <node pkg="bambi" type="missioncontroller" name="missioncontroller" ns="bambi">
          </node>
 
 
