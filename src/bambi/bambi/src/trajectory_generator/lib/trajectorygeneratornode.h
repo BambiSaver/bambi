@@ -1,7 +1,7 @@
 /*
- * coverage_path_planner.cpp
+ * trajectorygeneratornode.h
  *
- * Created: 2018/8/8 by Florian Mahlknecht <m@florian.world>
+ * Created: 2018/8/9 by Michael Rimondi <michael.rimondi@outlook.it>
  *
  * Copyright 2018 Michael Rimondi and Florian Mahlknecht
  *
@@ -21,20 +21,29 @@
  * along with BAMBI. If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#ifndef TRAJECTORYGENERATORNODE_H
+#define TRAJECTORYGENERATORNODE_H
+
 #include <ros/ros.h>
-#include "lib/coveragepathplannernode.h"
+#include "bambi_msgs/PathWithConstraints.h"
 
-using namespace bambi::coverage_path_planner;
-int main(int argc, char **argv)
+namespace bambi {
+namespace trajectory_generator{
+
+class TrajectoryGeneratorNode
 {
-    ros::init(argc, argv, "bambi_coverage_path_planner");
-    ros::NodeHandle nh;
-    CoveragePathPlannerNode node(nh);
+public:
+    TrajectoryGeneratorNode(const ros::NodeHandle& nodeHandle);
+    void spin();
 
-    ROS_INFO("Coverage Path Planner STARTUP");
-    node.spin();
+private:
+    void cb_trigger_trajectory_generation(const bambi_msgs::PathWithConstraints& pathWithConstraints);
 
+    ros::NodeHandle m_nodeHandle;
+    ros::Publisher  m_publisherTrajectory;
+    ros::Subscriber m_subscriberTriggerTrajectoryGeneration;
 
-
-  return 0;
+};
 }
+}
+#endif // TRAJECTORYGENERATORNODE_H
