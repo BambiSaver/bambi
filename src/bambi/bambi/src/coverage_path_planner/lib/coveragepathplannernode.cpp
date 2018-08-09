@@ -31,9 +31,9 @@ using namespace bambi::coverage_path_planner;
 CoveragePathPlannerNode::CoveragePathPlannerNode(const ros::NodeHandle &nodeHandle)
     : m_nodeHandle(nodeHandle) {
 
-    m_publisherPath = m_nodeHandle.advertise<bambi_msgs::Path>("~path", 5, false);
+    m_publisherPath = m_nodeHandle.advertise<bambi_msgs::Path>("path", 5, false);
 
-    m_subscriberTriggerPathGeneration = m_nodeHandle.subscribe("/bambi/missioncontroller/trigger_path_generation", 10,
+    m_subscriberTriggerPathGeneration = m_nodeHandle.subscribe("/bambi/mission_controller/trigger_path_generation", 10,
                                                                &CoveragePathPlannerNode::cb_trigger_path_generation, this);
 }
 

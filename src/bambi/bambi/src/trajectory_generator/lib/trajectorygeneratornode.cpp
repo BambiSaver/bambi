@@ -30,9 +30,9 @@ TrajectoryGeneratorNode::TrajectoryGeneratorNode(const ros::NodeHandle& nodeHand
     :m_nodeHandle(nodeHandle)
 {
 
-    m_publisherTrajectory = m_nodeHandle.advertise<bambi_msgs::Trajectory>("~trajectory", 5, false);
+    m_publisherTrajectory = m_nodeHandle.advertise<bambi_msgs::Trajectory>("trajectory", 5, false);
 
-    m_subscriberTriggerTrajectoryGeneration = m_nodeHandle.subscribe("/bambi/missioncontroller/trigger_trajectory_generation", 10, &TrajectoryGeneratorNode::cb_trigger_trajectory_generation, this);
+    m_subscriberTriggerTrajectoryGeneration = m_nodeHandle.subscribe("/bambi/mission_controller/trigger_trajectory_generation", 10, &TrajectoryGeneratorNode::cb_trigger_trajectory_generation, this);
 }
 
 void TrajectoryGeneratorNode::spin()

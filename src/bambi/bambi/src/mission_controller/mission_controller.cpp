@@ -1,5 +1,5 @@
 /*
- * missioncontroller.cpp
+ * mission_controller.cpp
  *
  * Created: 2018/8/6 by Florian Mahlknecht <m@florian.world>
  *
@@ -42,8 +42,8 @@ ros::Timer rosArmTimerProviderFunction (ros::Duration period) {
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "missioncontroller");
-  ros::NodeHandle nh;
+  ros::init(argc, argv, "mission_controller");
+  ros::NodeHandle nh("~");
   
   MCPublisher mcpublisher(nh);
   StateMachine stateMachine(mcpublisher, rosArmTimerProviderFunction);
@@ -66,6 +66,8 @@ int main(int argc, char **argv)
   subscribers.push_back(nh.subscribe("/mavros/mission/reached",5,
                         &StateMachine::cb_mission_waypoint_reached, &stateMachine));
 
+  subscribers.push_back(nh.subscribe("/bambi/optical_cam/ortho_photo_ready",5,
+                        &StateMachine::cb_orthophoto_ready, &stateMachine));
   subscribers.push_back(nh.subscribe("/bambi/boundary_generator/boundary",5,
                         &StateMachine::cb_boundary_generated, &stateMachine));
   subscribers.push_back(nh.subscribe("/bambi/coverage_path_planner/path",5,
@@ -73,7 +75,7 @@ int main(int argc, char **argv)
   subscribers.push_back(nh.subscribe("/bambi/trajectory_generator/trajectory",5,
                         &StateMachine::cb_trajectory_ready, &stateMachine));
   subscribers.push_back(nh.subscribe("/bambi/flight_controller/reached_home",5,
-                        &StateMachine::cb_mission_waypoint_reached, &stateMachine));
+                        &StateMachine::cb_coverage_flight_reached_home, &stateMachine));
 
 
   ROS_INFO("Mission Controller STARTUP");

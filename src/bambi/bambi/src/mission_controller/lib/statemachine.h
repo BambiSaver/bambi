@@ -1,5 +1,5 @@
 /*
- * missioncontrollerstatemachine.h
+ * statemachine.h
  *
  * Created: 07 2018 by flo
  *
@@ -34,6 +34,7 @@
 #include <bambi_msgs/Field.h>
 #include <bambi_msgs/Path.h>
 #include <bambi_msgs/Trajectory.h>
+#include <bambi_msgs/OrthoPhoto.h>
 #include <std_msgs/Bool.h>
 #include <map>
 
@@ -60,6 +61,7 @@ public:
     void cb_update_global_position(const sensor_msgs::NavSatFix& navSatFix);
     void cb_arming_timer(const ros::TimerEvent&);
     void cb_mission_waypoint_reached(const mavros_msgs::WaypointReached& msg);
+    void cb_orthophoto_ready(const bambi_msgs::OrthoPhoto& msg);
     void cb_boundary_generated(const bambi_msgs::Field& msg);
     void cb_coverage_path_ready(const bambi_msgs::Path& msg);
     void cb_trajectory_ready(const bambi_msgs::Trajectory& msg);
@@ -87,6 +89,7 @@ public:
       TRY_ARM_TIMER_SHOT,
       UAV_MODE_UPDATE,
       MISSION_ITEM_REACHED,
+      ORTHO_PHOTO_READY,
       BOUNDARY_GENERATED,
       COVERAGE_PATH_READY,
       TRAJECTORY_READY,

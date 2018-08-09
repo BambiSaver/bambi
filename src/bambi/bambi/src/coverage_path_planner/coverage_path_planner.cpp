@@ -28,7 +28,7 @@ using namespace bambi::coverage_path_planner;
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "coverage_path_planner");
-    ros::NodeHandle nh;
+    ros::NodeHandle nh("~");
     CoveragePathPlannerNode node(nh);
 
     ROS_INFO("Coverage Path Planner STARTUP");
