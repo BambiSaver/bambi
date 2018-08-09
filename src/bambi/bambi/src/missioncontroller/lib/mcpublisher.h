@@ -34,8 +34,8 @@ class MCPublisher
 public:
   MCPublisher(const ros::NodeHandle& missioncontrollerNodeHandle);
 
-
-  void takeOff(float takeoffAltitudeGlobal);
+  bool arm();
+  bool takeOff(float takeoffAltitudeGlobal);
 
 private:
   ros::NodeHandle m_mcNodeHandle;

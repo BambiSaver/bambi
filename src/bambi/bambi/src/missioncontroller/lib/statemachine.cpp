@@ -119,7 +119,8 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
     case State::READY:
         if (command == Command::MISSIONTRIGGER) {
             auto missionTriggerMsg = (mavros_msgs::BambiMissionTrigger*)msg;
-            
+
+
             if (missionTriggerMsg->startStop) {
                 //TODO: get alt_offset from BambiMissionTrigger msg
                 //float alt_offset = 10.f;
@@ -130,6 +131,9 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
                 changeState(State::ARMING);
                 
                 // create and trigger arm timer
+                //PER FLO: conviene metterlo private o ricrearlo ogni volta?
+                // mi ricordo che si potrebbe anche mettere nel metodo
+                //e fare in modo che non venga distrutto ad ogni chiamata
                 ros::Timer timer = m_armTimerProviderFunction(ros::Duration(2.));
                 timer.start();
                         
@@ -147,7 +151,26 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
     case State::ARMING:
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
-        } else {
+       } else if (command == Command::TRY_ARM_TIMER_SHOT) {
+           if (m_publisher.arm()){
+               ROS_INFO("Copter ARMED, sending takeoff message");
+               float globalAltitudeTO = static_cast<float>(m_lastGlobalPosition.altitude) + m_missionTriggerStart.altitude;
+                if(m_publisher.takeOff(globalAltitudeTO)){
+                    changeState(State::TAKING_OFF);
+                }else{
+                    //### FORSE SERVE IL DISARM ###
+                    ROS_WARN("TAKING OFF FAILED, going back to READY state");
+                }
+
+            }
+           else{
+               //TODO: set a counter which stop try arming after 5 times
+               // create and trigger arm timer
+               ros::Timer timer = m_armTimerProviderFunction(ros::Duration(2.));
+               timer.start();
+           }
+
+       } else {
             ROS_WARN("Ignoring command %s in state ARMING", commandToStringMap.at(command));
         }
         break;

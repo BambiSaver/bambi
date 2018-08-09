@@ -49,35 +49,63 @@ MCPublisher::MCPublisher(const ros::NodeHandle &missioncontrollerNodeHandle)
     m_hoverPositionPublisher = m_mcNodeHandle.advertise<mavros_msgs::PositionTarget>("~hovering_position", 500, false);
 }
 
-void MCPublisher::takeOff(float takeoffAltitudeGlobal)
+bool MCPublisher::arm()
 {
+    mavros_msgs::CommandBool commandBool;
+    commandBool.request.value = true;
+
+    ROS_INFO("SENDING ARMING MESSAGE");
+
+
+    if (!ros::service::waitForService("/mavros/cmd/arming", 5)){
+        ROS_ERROR("The service /mavros/cmd/arming is not avaiable");
+        return false;
+    }
+    if (!ros::service::call("/mavros/cmd/arming", commandBool)) {
+
+        ROS_ERROR("Arm service cannot send arming message");
+        return false;
+    }
+    if (commandBool.response.success){
+        ROS_INFO("Arm request accepted");
+        return true;
+    }
+  return false;
+}
+
+
+bool MCPublisher::takeOff(float takeoffAltitudeGlobal)
+{
+
+  //####Probably it is better to have a method which send status texts###
   mavros_msgs::StatusText statusText;
   statusText.severity = mavros_msgs::StatusText::INFO;
   statusText.text = "Taking off";
-  
   m_statusTextPublisher.publish(statusText);
 
   
-  mavros_msgs::CommandBool commandBool;
-  commandBool.request.value = true;
-  
-  ROS_INFO("SENDING ARMING MESSAGE");
-  
-  if (ros::service::call("/mavros/cmd/arming", commandBool)) {
-    ROS_INFO("ARMING CALL RETURNED %s", commandBool.response.success ? "successfully" : "failed");
-  }
+
   
   
   mavros_msgs::CommandTOL commandTOL;
   commandTOL.request.latitude = std::numeric_limits<float>::quiet_NaN();
   commandTOL.request.longitude = std::numeric_limits<float>::quiet_NaN();
   commandTOL.request.altitude = takeoffAltitudeGlobal;
-  ROS_INFO("SENDING TAKEOFF MESSAGE");
+  ROS_DEBUG("SENDING TAKEOFF MESSAGE");
   
-  if (ros::service::call("/mavros/cmd/takeoff",commandTOL)) {
-    ROS_INFO("TAKE OFF CALL RETURNED %s ", commandTOL.response.success ? "successfully" : "failed");
+  if (!ros::service::waitForService("/mavros/cmd/takeoff", 5)){
+      ROS_ERROR("The service /mavros/cmd/takeoff is not avaiable");
+      return false;
   }
-  
-  //"/mavros/cmd/arming"
+  if (!ros::service::call("/mavros/cmd/takeoff",commandTOL)) {
+    ROS_ERROR("Takeoff service cannot send takeoff message");
+    return false;
+  }
+  if (commandTOL.response.success){
+      ROS_INFO("Take off request accepted");
+      return true;
+  }
+return false;
+
 }
 
