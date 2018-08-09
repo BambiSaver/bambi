@@ -40,6 +40,13 @@ public:
 private:
   ros::NodeHandle m_mcNodeHandle;
   ros::Publisher m_statusTextPublisher;
+  ros::Publisher m_triggerShutterPublisher;
+  ros::Publisher m_triggerBoundaryGenerationPublisher;
+  ros::Publisher m_triggerPathGenerationPublisher;
+  ros::Publisher m_triggerTrajectoryGenerationPublisher;
+  ros::Publisher m_triggerCoverageFlightPublisher;
+  ros::Publisher m_triggerHoverPublisher;
+  ros::Publisher m_hoverPositionPublisher;
 };
 
 } // namespace missioncontroller

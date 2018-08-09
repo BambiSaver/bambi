@@ -17,7 +17,7 @@ class OrthoPhotoNode():
         self.m_orthoPhotoPublisher = rospy.Publisher("~orthophoto_ready",
                                                     OrthoPhoto, queue_size=5)
 
-        rospy.Subscriber('/bambi_missioncontroller/trigger_shutter', Bool, self.cb_shutter_trigger)
+        rospy.Subscriber('/bambi/missioncontroller/trigger_shutter', Bool, self.cb_shutter_trigger)
 
         rospy.spin()
 
@@ -35,7 +35,7 @@ class OrthoPhotoNode():
 # Main function.
 if __name__ == '__main__':
     # Initialize the node and name it.
-    rospy.init_node('bambi_optical_cam')
+    rospy.init_node('optical_cam')
 
     rospy.loginfo("OrthoPhoto STARTUP")
     # Go to class functions that do all the heavy lifting. Do error checking.

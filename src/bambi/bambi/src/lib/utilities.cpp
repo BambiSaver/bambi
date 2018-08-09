@@ -1,7 +1,7 @@
 /*
- * coverage_path_planner.cpp
+ * utilities.cpp
  *
- * Created: 2018/8/8 by Florian Mahlknecht <m@florian.world>
+ * Created: 2018/8/9 by Florian Mahlknecht <m@florian.world>
  *
  * Copyright 2018 Michael Rimondi and Florian Mahlknecht
  *
@@ -21,20 +21,17 @@
  * along with BAMBI. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#include <ros/ros.h>
-#include "lib/coveragepathplannernode.h"
+#include "utilities.h"
 
-using namespace bambi::coverage_path_planner;
-int main(int argc, char **argv)
-{
-    ros::init(argc, argv, "coverage_path_planner");
-    ros::NodeHandle nh;
-    CoveragePathPlannerNode node(nh);
+namespace bambi {
 
-    ROS_INFO("Coverage Path Planner STARTUP");
-    node.spin();
-
+const std::map<mavros_msgs::ExtendedState::_landed_state_type, const char *>  Utilities::landedStateToStringMap = {
+  { mavros_msgs::ExtendedState::LANDED_STATE_IN_AIR, "LANDED_STATE_IN_AIR" },
+  { mavros_msgs::ExtendedState::LANDED_STATE_LANDING, "LANDED_STATE_LANDING" },
+  { mavros_msgs::ExtendedState::LANDED_STATE_ON_GROUND, "LANDED_STATE_ON_GROUND" },
+  { mavros_msgs::ExtendedState::LANDED_STATE_TAKEOFF, "LANDED_STATE_TAKEOFF" },
+  { mavros_msgs::ExtendedState::LANDED_STATE_UNDEFINED, "LANDED_STATE_UNDEFINED" },
+};
 
 
-  return 0;
-}
+} // namespace bambi

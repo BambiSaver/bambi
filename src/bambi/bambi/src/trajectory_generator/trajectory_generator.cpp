@@ -28,7 +28,7 @@
 using namespace bambi::trajectory_generator;
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "bambi_trajectory_generator");
+  ros::init(argc, argv, "trajectory_generator");
   ros::NodeHandle nh;
   TrajectoryGeneratorNode node(nh);
   ROS_INFO("Trajectory Generator STARTUP");

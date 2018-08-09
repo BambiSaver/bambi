@@ -1,7 +1,7 @@
 /*
- * coverage_path_planner.cpp
+ * utilities.h
  *
- * Created: 2018/8/8 by Florian Mahlknecht <m@florian.world>
+ * Created: 2018/8/9 by Florian Mahlknecht <m@florian.world>
  *
  * Copyright 2018 Michael Rimondi and Florian Mahlknecht
  *
@@ -21,20 +21,21 @@
  * along with BAMBI. If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#include <ros/ros.h>
-#include "lib/coveragepathplannernode.h"
+#ifndef UTILITIES_H
+#define UTILITIES_H
 
-using namespace bambi::coverage_path_planner;
-int main(int argc, char **argv)
+#include <mavros_msgs/ExtendedState.h>
+
+
+namespace bambi {
+
+class Utilities
 {
-    ros::init(argc, argv, "coverage_path_planner");
-    ros::NodeHandle nh;
-    CoveragePathPlannerNode node(nh);
+public:
+  
+  static const std::map<mavros_msgs::ExtendedState::_landed_state_type, const char *> landedStateToStringMap;
+};
 
-    ROS_INFO("Coverage Path Planner STARTUP");
-    node.spin();
+} // namespace bambi
 
-
-
-  return 0;
-}
+#endif // UTILITIES_H

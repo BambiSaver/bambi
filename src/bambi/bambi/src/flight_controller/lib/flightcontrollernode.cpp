@@ -30,22 +30,22 @@ FlightControllerNode::FlightControllerNode(const ros::NodeHandle &nodeHandle)
   : m_nodeHandle(nodeHandle) {
   
   m_subscriberCoverageFlightTrigger = m_nodeHandle.subscribe(
-        "/bambi_missioncontroller/trigger_coverage_flight", 5,
+        "/bambi/missioncontroller/trigger_coverage_flight", 5,
        &FlightControllerNode::cb_trigger_coverage_flight, this);
   
   m_subscriberHoverTrigger = m_nodeHandle.subscribe(
-        "/bambi_missioncontroller/trigger_hover", 5,
+        "/bambi/missioncontroller/trigger_hover", 5,
        &FlightControllerNode::cb_trigger_hover, this);
   
   m_subscriberHoverTrigger = m_nodeHandle.subscribe(
-        "/bambi_missioncontroller/hovering_position", 500,
+        "/bambi/missioncontroller/hovering_position", 500,
        &FlightControllerNode::cb_hovering_position, this);
   
   m_publisherSetPosition = m_nodeHandle.advertise<mavros_msgs::GlobalPositionTarget>(
         "/mavros/setpoint_position/global", 500, false);
   
   m_publisherReachedHome = m_nodeHandle.advertise<std_msgs::Bool>(
-        "/bambi_flight_controller/reached_home", 5, false);
+        "/bambi/flight_controller/reached_home", 5, false);
 }
 
 void FlightControllerNode::cb_trigger_coverage_flight(const bambi_msgs::Trajectory &trajectory) {
