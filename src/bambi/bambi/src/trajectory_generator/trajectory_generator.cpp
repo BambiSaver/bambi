@@ -29,12 +29,10 @@ using namespace bambi::trajectory_generator;
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "trajectory_generator");
-  ros::NodeHandle nh;
+  ros::NodeHandle nh("~");
   TrajectoryGeneratorNode node(nh);
   ROS_INFO("Trajectory Generator STARTUP");
   node.spin();
-
-
 
   return 0;
 }

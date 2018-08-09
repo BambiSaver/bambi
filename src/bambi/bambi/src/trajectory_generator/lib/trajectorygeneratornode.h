@@ -42,7 +42,6 @@ private:
     ros::NodeHandle m_nodeHandle;
     ros::Publisher  m_publisherTrajectory;
     ros::Subscriber m_subscriberTriggerTrajectoryGeneration;
-
 };
 }
 }

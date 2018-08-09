@@ -14,10 +14,10 @@ from std_msgs.msg import Bool
 class OrthoPhotoNode():
     
     def __init__(self):
-        self.m_orthoPhotoPublisher = rospy.Publisher("~orthophoto_ready",
+        self.m_orthoPhotoPublisher = rospy.Publisher("~ortho_photo_ready",
                                                     OrthoPhoto, queue_size=5)
 
-        rospy.Subscriber('/bambi/missioncontroller/trigger_shutter', Bool, self.cb_shutter_trigger)
+        rospy.Subscriber('/bambi/mission_controller/trigger_shutter', Bool, self.cb_shutter_trigger)
 
         rospy.spin()
 

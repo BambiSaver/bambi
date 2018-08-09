@@ -1,5 +1,5 @@
 /*
- * missioncontrollerstatemachine.cpp
+ * statemachine.cpp
  *
  * Created: 07 2018 by Florian Mahlknecht <m@florian.world>
  *
@@ -74,6 +74,9 @@ void StateMachine::cb_arming_timer(const ros::TimerEvent &) {
 }
 void StateMachine::cb_mission_waypoint_reached(const mavros_msgs::WaypointReached &msg) {
   handleStateMachineCommand(Command::MISSION_ITEM_REACHED, (void*)&msg);
+}
+void StateMachine::cb_orthophoto_ready(const bambi_msgs::OrthoPhoto &msg) {
+  handleStateMachineCommand(Command::ORTHO_PHOTO_READY, (void*)&msg);
 }
 void StateMachine::cb_boundary_generated(const bambi_msgs::Field &msg) {
   handleStateMachineCommand(Command::BOUNDARY_GENERATED, (void*)&msg);
@@ -286,6 +289,7 @@ const std::map<StateMachine::Command, const char *>  StateMachine::commandToStri
   { StateMachine::Command::TRY_ARM_TIMER_SHOT, "TRY_ARM_TIMER_SHOT" },
   { StateMachine::Command::UAV_MODE_UPDATE, "UAV_MODE_UPDATE" },
   { StateMachine::Command::MISSION_ITEM_REACHED, "MISSION_ITEM_REACHED" },
+  { StateMachine::Command::ORTHO_PHOTO_READY, "ORTHO_PHOTO_READY" },
   { StateMachine::Command::BOUNDARY_GENERATED, "BOUNDARY_GENERATED" },
   { StateMachine::Command::COVERAGE_PATH_READY, "COVERAGE_PATH_READY" },
   { StateMachine::Command::TRAJECTORY_READY, "TRAJECTORY_READY" },

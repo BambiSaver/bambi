@@ -29,7 +29,7 @@ using namespace bambi::flight_controller;
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "flight_controller");
-  ros::NodeHandle nh;
+  ros::NodeHandle nh("~");
   FlightControllerNode node(nh);
   
   

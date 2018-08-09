@@ -19,7 +19,7 @@ class BoundaryGeneratorNode():
     def __init__(self):
         self.m_boundaryPublisher = rospy.Publisher("~boundary", Field, queue_size=5)
 
-        rospy.Subscriber('/bambi/missioncontroller/trigger_boundary', OrthoPhoto, self.cb_boundary_trigger)
+        rospy.Subscriber('/bambi/mission_controller/trigger_boundary', OrthoPhoto, self.cb_boundary_trigger)
 
         rospy.spin()
 

@@ -33,15 +33,15 @@ include_directories(
 
 # Declare a C++ library
 add_library(${PROJECT_NAME}
-   src/missioncontroller/lib/statemachine.cpp
+   src/mission_controller/lib/statemachine.cpp
    src/lib/utilities.cpp
-   src/missioncontroller/lib/mcpublisher.cpp
+   src/mission_controller/lib/mcpublisher.cpp
    src/flight_controller/lib/flightcontrollernode.cpp
    src/coverage_path_planner/lib/coveragepathplannernode.cpp
    src/trajectory_generator/lib/trajectorygeneratornode.cpp
 )
 
-add_executable(${PROJECT_NAME}_missioncontroller src/missioncontroller/missioncontroller.cpp)
+add_executable(${PROJECT_NAME}_mission_controller src/mission_controller/mission_controller.cpp)
 add_executable(${PROJECT_NAME}_coverage_path_planner src/coverage_path_planner/coverage_path_planner.cpp)
 add_executable(${PROJECT_NAME}_trajectory_generator src/trajectory_generator/trajectory_generator.cpp)
 add_executable(${PROJECT_NAME}_flight_controller src/flight_controller/flight_controller.cpp)
@@ -51,7 +51,7 @@ add_executable(${PROJECT_NAME}_flight_controller src/flight_controller/flight_co
 ## target back to the shorter version for ease of user use
 ## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
 
-set_target_properties(${PROJECT_NAME}_missioncontroller PROPERTIES OUTPUT_NAME missioncontroller PREFIX "")
+set_target_properties(${PROJECT_NAME}_mission_controller PROPERTIES OUTPUT_NAME mission_controller PREFIX "")
 set_target_properties(${PROJECT_NAME}_coverage_path_planner PROPERTIES OUTPUT_NAME coverage_path_planner PREFIX "")
 set_target_properties(${PROJECT_NAME}_trajectory_generator PROPERTIES OUTPUT_NAME trajectory_generator PREFIX "")
 set_target_properties(${PROJECT_NAME}_flight_controller PROPERTIES OUTPUT_NAME flight_controller PREFIX "")
@@ -59,7 +59,7 @@ set_target_properties(${PROJECT_NAME}_flight_controller PROPERTIES OUTPUT_NAME f
 add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME}_missioncontroller ${PROJECT_NAME} ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_mission_controller ${PROJECT_NAME} ${catkin_LIBRARIES})
 target_link_libraries(${PROJECT_NAME}_coverage_path_planner ${PROJECT_NAME} ${catkin_LIBRARIES})
 target_link_libraries(${PROJECT_NAME}_trajectory_generator ${PROJECT_NAME} ${catkin_LIBRARIES})
 target_link_libraries(${PROJECT_NAME}_flight_controller ${PROJECT_NAME} ${catkin_LIBRARIES})
