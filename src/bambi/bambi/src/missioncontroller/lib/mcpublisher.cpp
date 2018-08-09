@@ -25,15 +25,28 @@
 #include <mavros_msgs/StatusText.h>
 #include <mavros_msgs/CommandTOL.h>
 #include <mavros_msgs/CommandBool.h>
+#include <mavros_msgs/PositionTarget.h>
 #include <bambi_msgs/Field.h>
+#include <bambi_msgs/OrthoPhoto.h>
+#include <bambi_msgs/FieldCoverageInfo.h>
+#include <bambi_msgs/PathWithConstraints.h>
+#include <bambi_msgs/Trajectory.h>
 #include <geographic_msgs/GeoPoint.h>
+#include <std_msgs/Bool.h>
 
 using namespace bambi::missioncontroller;
 
-MCPublisher::MCPublisher(const ros::NodeHandle &missioncontrollerNodeHandle) :
-  m_mcNodeHandle(missioncontrollerNodeHandle)
-{
-  m_statusTextPublisher = m_mcNodeHandle.advertise<mavros_msgs::StatusText>("/mavros/statustext/send", 500, false);
+MCPublisher::MCPublisher(const ros::NodeHandle &missioncontrollerNodeHandle)
+      : m_mcNodeHandle(missioncontrollerNodeHandle) {
+    m_statusTextPublisher = m_mcNodeHandle.advertise<mavros_msgs::StatusText>("/mavros/statustext/send", 500, false);
+
+    m_triggerShutterPublisher = m_mcNodeHandle.advertise<std_msgs::Bool>("~trigger_shutter", 5, false);
+    m_triggerBoundaryGenerationPublisher = m_mcNodeHandle.advertise<bambi_msgs::OrthoPhoto>("~trigger_boundary", 5, false);
+    m_triggerPathGenerationPublisher = m_mcNodeHandle.advertise<bambi_msgs::FieldCoverageInfo>("~trigger_path_generation", 5, false);
+    m_triggerTrajectoryGenerationPublisher = m_mcNodeHandle.advertise<bambi_msgs::PathWithConstraints>("~trigger_trajectory_generation", 5, false);
+    m_triggerCoverageFlightPublisher = m_mcNodeHandle.advertise<std_msgs::Bool>("~trigger_coverage_flight", 5, false);
+    m_triggerHoverPublisher = m_mcNodeHandle.advertise<std_msgs::Bool>("trigger_hover", 5, false);
+    m_hoverPositionPublisher = m_mcNodeHandle.advertise<mavros_msgs::PositionTarget>("~hovering_position", 500, false);
 }
 
 void MCPublisher::takeOff(float takeoffAltitudeGlobal)
