@@ -26,9 +26,16 @@
 
 #include "mcpublisher.h"
 
-//#include <mavros_msgs/State.h>
+#include <mavros_msgs/State.h>
+#include <mavros_msgs/ExtendedState.h>
 #include <mavros_msgs/BambiMissionTrigger.h>
+#include <mavros_msgs/WaypointReached.h>
 #include <sensor_msgs/NavSatFix.h>
+#include <bambi_msgs/Field.h>
+#include <bambi_msgs/Path.h>
+#include <bambi_msgs/Trajectory.h>
+#include <std_msgs/Bool.h>
+#include <map>
 
 namespace bambi {
 namespace missioncontroller {
@@ -36,27 +43,57 @@ namespace missioncontroller {
 class StateMachine
 {
 public:
-    StateMachine(const MCPublisher &publisher);
+    typedef ros::Timer (*rosTimerProviderFunction)(ros::Duration period);
+  
+    /**
+     * The provider function of ros::Timer is used to be independent from the node and 
+     * be able to eventually unit test the StateMachine class.
+     * @brief StateMachine
+     * @param publisher
+     * @param armTimerProvider
+     */
+    StateMachine(const MCPublisher &publisher, rosTimerProviderFunction armTimerProvider);
 
     void cb_mission_trigger_received (const mavros_msgs::BambiMissionTrigger& msg);
-//    void cb_uav_state_change(const mavros_msgs::State& msg);
+    void cb_uav_state_change(const mavros_msgs::State& msg);
+    void cb_uav_state_extended_change(const mavros_msgs::ExtendedState& msg);
     void cb_update_global_position(const sensor_msgs::NavSatFix& navSatFix);
-    
+    void cb_arming_timer(const ros::TimerEvent&);
+    void cb_mission_waypoint_reached(const mavros_msgs::WaypointReached& msg);
+    void cb_boundary_generated(const bambi_msgs::Field& msg);
+    void cb_coverage_path_ready(const bambi_msgs::Path& msg);
+    void cb_trajectory_ready(const bambi_msgs::Trajectory& msg);
+    void cb_coverage_flight_reached_home(const std_msgs::Bool& msg);
     
     enum class State {
       INIT,
       READY,
-      TAKE_OFF_SENT,
-      TAKE_OFF_POSITION_REACHED,
-      GOING_TO_MISSION_BASE_POINT,
-      MISSION_BASE_POINT_REACHED,
-      SHUTTER_TRIGGERED,
-      ORTHO_PHOTO_RECEIVED,
+      ARMING,
+      TAKING_OFF,
+      STARTING_PHOTO_MISSION,
+      REACHING_MISSION_START_POINT,
+      TAKING_ORTHO_PHOTO,
+      GENERATING_BOUNDARY,
+      COVERAGE_PATH_PLANNING,
+      GENERATING_TRAJECTORY,
+      COVERAGE_FLIGHT,
+      LANDING,
+      MISSION_CANCELLING_RTL
     };
     
     enum class Command {
       MISSIONTRIGGER,
-      GLOBAL_POSITION_UPDATE
+      GLOBAL_POSITION_UPDATE,
+      TRY_ARM_TIMER_SHOT,
+      UAV_MODE_UPDATE,
+      MISSION_ITEM_REACHED,
+      BOUNDARY_GENERATED,
+      COVERAGE_PATH_READY,
+      TRAJECTORY_READY,
+      BAMBI_FOUND,
+      BAMBI_SAVED,
+      COVERAGE_FC_REACHED_HOME,
+      LANDED_STATE_UPDATE
     };
     
 private:
@@ -65,11 +102,15 @@ private:
     
     State m_state;
     MCPublisher m_publisher;
+    rosTimerProviderFunction m_armTimerProviderFunction;
+    
+    mavros_msgs::BambiMissionTrigger m_missionTriggerStart;
+    mavros_msgs::ExtendedState::_landed_state_type m_lastUavLandedState;
+    mavros_msgs::State::_mode_type m_lastUavMode;
     sensor_msgs::NavSatFix m_lastGlobalPosition;
     
-    
-    static const char *commandToStringHelper(StateMachine::Command command);
-    static const char *stateToStringHelper(StateMachine::State state);
+    static const std::map<State, const char *> stateToStringMap;
+    static const std::map<Command, const char *> commandToStringMap;
 };
 
 }

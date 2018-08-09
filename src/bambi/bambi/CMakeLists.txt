@@ -34,6 +34,7 @@ include_directories(
 # Declare a C++ library
 add_library(${PROJECT_NAME}
    src/missioncontroller/lib/statemachine.cpp
+   src/lib/utilities.cpp
    src/missioncontroller/lib/mcpublisher.cpp
    src/flight_controller/lib/flightcontrollernode.cpp
 )
