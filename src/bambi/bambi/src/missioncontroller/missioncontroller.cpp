@@ -42,7 +42,7 @@ ros::Timer rosArmTimerProviderFunction (ros::Duration period) {
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "bambi_missioncontroller");
+  ros::init(argc, argv, "missioncontroller");
   ros::NodeHandle nh;
   
   MCPublisher mcpublisher(nh);
@@ -65,16 +65,16 @@ int main(int argc, char **argv)
                         &StateMachine::cb_uav_state_extended_change, &stateMachine));
   subscribers.push_back(nh.subscribe("/mavros/mission/reached",5,
                         &StateMachine::cb_mission_waypoint_reached, &stateMachine));
-  
-  subscribers.push_back(nh.subscribe("/bambi_boundary_generator/boundary",5,
+
+  subscribers.push_back(nh.subscribe("/bambi/boundary_generator/boundary",5,
                         &StateMachine::cb_boundary_generated, &stateMachine));
-  subscribers.push_back(nh.subscribe("/bambi_coverage_path_planner/path",5,
+  subscribers.push_back(nh.subscribe("/bambi/coverage_path_planner/path",5,
                         &StateMachine::cb_coverage_path_ready, &stateMachine));
-  subscribers.push_back(nh.subscribe("/bambi_trajectory_generator/trajectory",5,
+  subscribers.push_back(nh.subscribe("/bambi/trajectory_generator/trajectory",5,
                         &StateMachine::cb_trajectory_ready, &stateMachine));
-  subscribers.push_back(nh.subscribe("/bambi_flight_controller/reached_home",5,
+  subscribers.push_back(nh.subscribe("/bambi/flight_controller/reached_home",5,
                         &StateMachine::cb_mission_waypoint_reached, &stateMachine));
-  
+
 
   ROS_INFO("Mission Controller STARTUP");
 

@@ -19,7 +19,7 @@ class BoundaryGeneratorNode():
     def __init__(self):
         self.m_boundaryPublisher = rospy.Publisher("~boundary", Field, queue_size=5)
 
-        rospy.Subscriber('/bambi_missioncontroller/trigger_boundary', OrthoPhoto, self.cb_boundary_trigger)
+        rospy.Subscriber('/bambi/missioncontroller/trigger_boundary', OrthoPhoto, self.cb_boundary_trigger)
 
         rospy.spin()
 
@@ -56,7 +56,7 @@ class BoundaryGeneratorNode():
 # Main function.
 if __name__ == '__main__':
     # Initialize the node and name it.
-    rospy.init_node('bambi_boundary_generator')
+    rospy.init_node('boundary_generator')
 
     rospy.loginfo("BoundaryGenerator STARTUP")
     # Go to class functions that do all the heavy lifting. Do error checking.
