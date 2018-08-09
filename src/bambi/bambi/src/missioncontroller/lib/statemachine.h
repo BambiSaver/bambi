@@ -26,7 +26,7 @@
 
 #include "mcpublisher.h"
 
-#include <mavros_msgs/State.h>
+//#include <mavros_msgs/State.h>
 #include <mavros_msgs/BambiMissionTrigger.h>
 #include <sensor_msgs/NavSatFix.h>
 
@@ -39,27 +39,37 @@ public:
     StateMachine(const MCPublisher &publisher);
 
     void cb_mission_trigger_received (const mavros_msgs::BambiMissionTrigger& msg);
-    void cb_uav_state_change(const mavros_msgs::State& msg);
-    void cb_update_altitude(const sensor_msgs::NavSatFix& navSatFix);
+//    void cb_uav_state_change(const mavros_msgs::State& msg);
+    void cb_update_global_position(const sensor_msgs::NavSatFix& navSatFix);
+    
+    
     enum class State {
-        READY,
-        TAKE_OFF_SENT,
-        TAKE_OFF_POSITION_REACHED,
-        GOING_TO_MISSION_BASE_POINT,
-        MISSION_BASE_POINT_REACHED,
-        SHUTTER_TRIGGERED,
-        ORTHO_PHOTO_RECEIVED,
+      INIT,
+      READY,
+      TAKE_OFF_SENT,
+      TAKE_OFF_POSITION_REACHED,
+      GOING_TO_MISSION_BASE_POINT,
+      MISSION_BASE_POINT_REACHED,
+      SHUTTER_TRIGGERED,
+      ORTHO_PHOTO_RECEIVED,
     };
-
+    
+    enum class Command {
+      MISSIONTRIGGER,
+      GLOBAL_POSITION_UPDATE
+    };
+    
 private:
+    void handleStateMachineCommand(Command command, const void* msg);
+    void changeState(State newState);
+    
     State m_state;
     MCPublisher m_publisher;
-    mavros_msgs::State m_uavState;
-
-    //Altitude [m]. Positive is above the WGS 84 ellipsoid
-    // (quiet NaN if no altitude is available).
-    // updated each time FCU sends GPS fix data
-    float m_altitude;
+    sensor_msgs::NavSatFix m_lastGlobalPosition;
+    
+    
+    static const char *commandToStringHelper(StateMachine::Command command);
+    static const char *stateToStringHelper(StateMachine::State state);
 };
 
 }
