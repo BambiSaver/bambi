@@ -24,7 +24,7 @@
          </node>
 
 <!-- Run missioncontroller node under "bambi" namespace -->
-       <node pkg="bambi" type="missioncontroller" name="missioncontroller" ns="bambi">
+       <node pkg="bambi" type="mission_controller" name="mission_controller" ns="bambi">
          </node>
 
 
