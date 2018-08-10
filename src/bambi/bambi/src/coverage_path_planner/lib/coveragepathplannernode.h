@@ -43,7 +43,6 @@ private:
     ros::NodeHandle m_nodeHandle;
     ros::Publisher  m_publisherPath;
     ros::Subscriber m_subscriberTriggerPathGeneration;
-
 };
 
 }

@@ -125,6 +125,8 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             // 8x8m
             fieldWithInfo.thermal_camera_ground_footprint_height = 8.0f;
             fieldWithInfo.thermal_camera_ground_footprint_width = 8.0f;
+            fieldWithInfo.home_position.latitude = 46.453066;
+            fieldWithInfo.home_position.longitude = 11.492082;
             changeState(State::COVERAGE_PATH_PLANNING);
             m_publisher.triggerPathGeneration(fieldWithInfo);
         } else {

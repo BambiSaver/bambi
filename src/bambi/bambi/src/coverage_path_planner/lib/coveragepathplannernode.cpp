@@ -30,10 +30,11 @@
 #include <map>
 
 #include <deque>
+#include <utility>
+#include <queue>
 
 #include <boost/shared_ptr.hpp>
 #include <boost/multi_array.hpp>
-#include <boost/tuple/tuple.hpp>
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/point_xy.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
@@ -55,8 +56,7 @@ CoveragePathPlannerNode::CoveragePathPlannerNode(const ros::NodeHandle &nodeHand
                                                                &CoveragePathPlannerNode::cb_trigger_path_generation, this);
 }
 
-void CoveragePathPlannerNode::spin()
-{
+void CoveragePathPlannerNode::spin() {
     ros::spin();
 }
 
@@ -73,6 +73,96 @@ polygon_t helperFunctionGetSquarePolygonFromMatrixCell(double start_N, double st
     //boost::geometry::set()
     boost::geometry::assign_points(p, points);
     return p;
+}
+
+
+std::pair<int, int> getIndexOfMatrixByPoint(double _N, double _E, double start_N, double start_E, float sensorFootprint) {
+    std::pair<int, int> t;
+    t.first = std::floor((_N - start_N) / sensorFootprint);
+    t.second = std::floor((_E - start_E) / sensorFootprint);
+    return t;
+}
+
+void checkIfToPutNextStep(boost::multi_array<int, 2>& matrix, int i, int j, int currentStep) {
+    if (matrix[i][j] == -1) {
+        // not initialized
+        matrix[i][j] = currentStep + 1;
+    } else if (matrix[i][j] > 0) {
+        // do nothing, because we passed already here, probably in a quicker way
+    }
+}
+
+
+short matchesTheNumber(const boost::multi_array<int, 2>& matrix, int i, int j, int theNumber) {
+    if (matrix[i][j] == theNumber)
+        return 1;
+    return 0;
+}
+
+// returns the number of fields in the neighboorhood with the same number
+short sameValuedNeighborFields(const boost::multi_array<int, 2>& matrix, int i, int j) {
+    return matchesTheNumber(matrix, i, j+1, matrix[i][j])
+            + matchesTheNumber(matrix, i+1, j+1, matrix[i][j])
+            + matchesTheNumber(matrix, i+1, j, matrix[i][j])
+            + matchesTheNumber(matrix, i+1, j-1, matrix[i][j])
+            + matchesTheNumber(matrix, i, j-1, matrix[i][j])
+            + matchesTheNumber(matrix, i-1, j-1, matrix[i][j])
+            + matchesTheNumber(matrix, i-1, j, matrix[i][j])
+            + matchesTheNumber(matrix, i-1, j+1, matrix[i][j]);
+}
+
+void printMatrix(const boost::multi_array<int, 2>& matrix, int n_N, int n_E)
+{
+    for (int i = n_N+1; i >= 0; --i) {
+        std::ostringstream stringStream;
+        for (int j = 0; j <= n_E+1; ++j) {
+            stringStream << std::setw(4);
+            stringStream << matrix[i][j];
+        }
+        ROS_INFO("%s", stringStream.str().c_str());
+    }
+}
+
+void printDirectionMatrix(const boost::multi_array<std::string, 2>& matrix, int n_N, int n_E)
+{
+    for (int i = n_N+1; i >= 0; --i) {
+        std::ostringstream stringStream;
+        for (int j = 0; j <= n_E+1; ++j) {
+            stringStream << std::setw(4);
+            stringStream << matrix[i][j];
+        }
+        ROS_INFO("%s", stringStream.str().c_str());
+    }
+}
+
+const std::string getDirection(const std::pair<int,int>& from, const std::pair<int,int>& to) {
+    if (to.first > from.first) {
+        // went N
+        if (to.second < from.second) {
+            return "NW";
+        } else if (to.second > from.second) {
+            return "NE";
+        } else {
+            return "N";
+        }
+    } else if (to.first == from.first) {
+        if (to.second < from.second) {
+            return "W";
+        } else if (to.second > from.second) {
+            return "E";
+        } else {
+            // from == to (pair completely the same)
+            return "***";
+        }
+    } else {
+        if (to.second < from.second) {
+            return "SW";
+        } else if (to.second > from.second) {
+            return "SE";
+        } else {
+            return "S";
+        }
+    }
 }
 
 void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::FieldCoverageInfo &fieldCoverageInfo) {
@@ -136,18 +226,26 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
 
     ROS_INFO("Making a grid of %d x %d cells, because we have a sensor footprint of %.2fm x %.2fm", n_E, n_N, minDimFootprint, minDimFootprint);
 
-    boost::multi_array<int, 2> matrix(boost::extents[n_N][n_E]);
+    boost::multi_array<int, 2> matrix(boost::extents[n_N+2][n_E+2]);
     //boost::shared_ptr<map_t> map(new map_t());
 
+    // make field larger to put in matrix -2 on the borders for easier algorithm later
+    bottomBorder_N -= minDimFootprint;
+    leftBorder_E -= minDimFootprint;
 
     double fieldArea = boost::geometry::area(boostFieldBorderPolygon);
-    ROS_INFO("FIELD IS %.2fm^2", fieldArea);
+    ROS_INFO("FIELD IS %.2fm^2", std::abs<double>(fieldArea));
 
 
-    for (int i = 0; i < n_N; ++i) {
-        for (int j = 0; j < n_E; ++j) {
+    for (int i = 0; i < n_N+2; ++i) {
+        for (int j = 0; j < n_E+2; ++j) {
+
+            if (i == 0 || j == 0 || i == n_N + 1 || j == n_E + 1) {
+                matrix[i][j] = -2;
+                continue;
+            }
+
             polygon_t cellBorderPolygon = helperFunctionGetSquarePolygonFromMatrixCell(bottomBorder_N, leftBorder_E, i, j, minDimFootprint);
-
 
             std::deque<polygon_t> output;
             boost::geometry::intersection(boostFieldBorderPolygon, cellBorderPolygon, output);
@@ -167,4 +265,119 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
         }
     }
 
+
+
+    geographic_msgs::GeoPoint homePositionGeo = geodesy::toMsg(fieldCoverageInfo.home_position.latitude, fieldCoverageInfo.home_position.longitude);
+
+    geodesy::UTMPoint homePositionUTM(homePositionGeo);
+    auto index = getIndexOfMatrixByPoint(homePositionUTM.northing, homePositionUTM.easting, bottomBorder_N, leftBorder_E, minDimFootprint);
+
+    matrix[index.first][index.second] = 0;
+
+    int current_step = 0;
+    bool something_inserted = true;
+
+    while (something_inserted) {
+        something_inserted = false;
+
+        for (int i = 1; i <= n_N; ++i) {
+            for (int j = 1; j <= n_E; ++j) {
+                if (matrix[i][j] == current_step) {
+                    checkIfToPutNextStep(matrix, i, j+1, current_step);
+                    checkIfToPutNextStep(matrix, i+1, j, current_step);
+                    checkIfToPutNextStep(matrix, i, j-1, current_step);
+                    checkIfToPutNextStep(matrix, i-1, j, current_step);
+
+                    checkIfToPutNextStep(matrix, i+1, j+1, current_step);
+                    checkIfToPutNextStep(matrix, i+1, j-1, current_step);
+                    checkIfToPutNextStep(matrix, i-1, j-1, current_step);
+                    checkIfToPutNextStep(matrix, i-1, j+1, current_step);
+                    something_inserted = true;
+                }
+            }
+        }
+        ++current_step;
+    }
+
+
+    printMatrix(matrix, n_N, n_E);
+
+    ROS_INFO("CHOOSING START POINT");
+
+    int max = 0;
+
+    // TODO stupid find element() --> getIndex() ?
+
+    std::pair<int, int> myChosenStartPoint(-1, -1);
+
+    for (int i = 1; i <= n_N; ++i) {
+        for (int j = 1; j <= n_E; ++j) {
+            if (matrix[i][j] > max) {
+                max = matrix[i][j];
+                myChosenStartPoint.first = i;
+                myChosenStartPoint.second = j;
+            } else if (matrix[i][j] == max){
+                short numSameValuedNeighborFieldsOfMyChoice = sameValuedNeighborFields(matrix, myChosenStartPoint.first, myChosenStartPoint.second);
+                short numSameValuedNeighborFieldsOfCurrent = sameValuedNeighborFields(matrix, i, j);
+
+                if (numSameValuedNeighborFieldsOfCurrent < numSameValuedNeighborFieldsOfMyChoice) {
+                    // less same values, is better
+                    myChosenStartPoint.first = i;
+                    myChosenStartPoint.second = j;
+                }
+            }
+        }
+    }
+
+    ROS_INFO("START POINT = (%d, %d)", myChosenStartPoint.first, myChosenStartPoint.second);
+
+
+    bool reachedEnd = false;
+    auto currentPos = myChosenStartPoint;
+
+
+    boost::multi_array<std::string, 2> directionMatrix(boost::extents[n_N+2][n_E+2]);
+
+    while (!reachedEnd) {
+        // assume reaching end
+        reachedEnd = true;
+
+        std::pair<int,int> bestChoice;
+        int bestPriority = -1;
+
+        for (int i = currentPos.first - 1; i <= currentPos.first + 1; ++i) {
+            for (int j = currentPos.second - 1; j <= currentPos.second + 1; ++j) {
+                if (i == currentPos.first && j == currentPos.second)
+                    // skip same field
+                    continue;
+
+
+                if (matrix[i][j] >= 0) {
+                    reachedEnd = false;
+
+                    // the higher the better
+                    int priority = matrix[i][j]*10 + (8 - sameValuedNeighborFields(matrix, i, j));
+                    if (priority > bestPriority) {
+                        bestPriority = priority;
+                        bestChoice.first = i;
+                        bestChoice.second = j;
+                    }
+                }
+            }
+        }
+
+        if (!reachedEnd) {
+            // I've been here
+            matrix[currentPos.first][currentPos.second] = -3;
+
+            directionMatrix[currentPos.first][currentPos.second] = getDirection(currentPos, bestChoice);
+
+            if (myChosenStartPoint == currentPos)
+                directionMatrix[currentPos.first][currentPos.second]  = std::string("*") + directionMatrix[currentPos.first][currentPos.second] + std::string("*");
+
+            currentPos = bestChoice;
+        }
+    }
+
+    printDirectionMatrix(directionMatrix, n_N, n_E);
 }
