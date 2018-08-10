@@ -39,6 +39,10 @@
 #include <boost/geometry/geometries/point_xy.hpp>
 #include <boost/geometry/geometries/polygon.hpp>
 
+#include <nav_msgs/Path.h>
+#include <geometry_msgs/PoseStamped.h>
+
+
 using namespace bambi::coverage_path_planner;
 
 typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> point_t;
@@ -50,7 +54,11 @@ typedef std::map<boost::tuple<int, int>, polygon_t> map_t;
 CoveragePathPlannerNode::CoveragePathPlannerNode(const ros::NodeHandle &nodeHandle)
     : m_nodeHandle(nodeHandle) {
 
-    m_publisherPath = m_nodeHandle.advertise<bambi_msgs::Path>("path", 5, false);
+    m_publisherBambiPath = m_nodeHandle.advertise<bambi_msgs::Path>("path", 5, false);
+
+    m_publisherRosNavPath = m_nodeHandle.advertise<nav_msgs::Path>("rviz_path", 5, false);
+
+
 
     m_subscriberTriggerPathGeneration = m_nodeHandle.subscribe("/bambi/mission_controller/trigger_path_generation", 10,
                                                                &CoveragePathPlannerNode::cb_trigger_path_generation, this);
@@ -73,6 +81,14 @@ polygon_t helperFunctionGetSquarePolygonFromMatrixCell(double start_N, double st
     //boost::geometry::set()
     boost::geometry::assign_points(p, points);
     return p;
+}
+
+geodesy::UTMPoint getUTMCenterPointFromCellIndex(double start_N, double start_E, std::pair<int, int> index, float sensorFootprint, const geodesy::UTMPoint& bottomLeft) {
+    std::pair<double,double> coordinates(
+                start_N + index.first*sensorFootprint + sensorFootprint/2,
+                start_E + index.second*sensorFootprint + sensorFootprint/2
+                );
+    return geodesy::UTMPoint(coordinates.second, coordinates.first, bottomLeft.zone, bottomLeft.band);
 }
 
 
@@ -334,9 +350,10 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
 
     bool reachedEnd = false;
     auto currentPos = myChosenStartPoint;
-
-
     boost::multi_array<std::string, 2> directionMatrix(boost::extents[n_N+2][n_E+2]);
+
+    bambi_msgs::Path varForPublishingBambi;
+    nav_msgs::Path varForPublishingRos;
 
     while (!reachedEnd) {
         // assume reaching end
@@ -370,6 +387,30 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
             // I've been here
             matrix[currentPos.first][currentPos.second] = -3;
 
+
+            auto utmPoint = getUTMCenterPointFromCellIndex(bottomBorder_N, leftBorder_E, currentPos, minDimFootprint, bottomLeft);
+
+            geographic_msgs::GeoPoint geoPoint = geodesy::toMsg(utmPoint);
+
+
+            // save for publishers
+            bambi_msgs::GeoPositionWithRelativeAltitude bambiPoint;
+            // use only scanning altitude for now TODO
+            bambiPoint.altitude_over_ground_in_mm = fieldCoverageInfo.relative_altitude_scanning_in_mm;
+            bambiPoint.geopos_2d.latitude = geoPoint.latitude;
+            bambiPoint.geopos_2d.longitude = geoPoint.longitude;
+
+            geometry_msgs::PoseStamped poseStamped;
+            poseStamped.pose.position.x = utmPoint.easting - leftBorder_E;
+            poseStamped.pose.position.y = utmPoint.northing - topBorder_N;
+            poseStamped.pose.position.z = fieldCoverageInfo.relative_altitude_scanning_in_mm / 1E3;
+            // TODO fix in rviz
+            poseStamped.header.frame_id = "/map";
+
+            varForPublishingBambi.geometric_path.push_back(bambiPoint);
+            varForPublishingRos.poses.push_back(poseStamped);
+
+
             directionMatrix[currentPos.first][currentPos.second] = getDirection(currentPos, bestChoice);
 
             if (myChosenStartPoint == currentPos)
@@ -383,4 +424,7 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
     directionMatrix[currentPos.first][currentPos.second] = directionMatrix[currentPos.first][currentPos.second]  = std::string("#") + directionMatrix[currentPos.first][currentPos.second] + std::string("#");
 
     printDirectionMatrix(directionMatrix, n_N, n_E);
+
+    m_publisherBambiPath.publish(varForPublishingBambi);
+    m_publisherRosNavPath.publish(varForPublishingRos);
 }

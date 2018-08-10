@@ -41,7 +41,8 @@ public:
 private:
     void cb_trigger_path_generation(const bambi_msgs::FieldCoverageInfo& fieldCoverageInfo);
     ros::NodeHandle m_nodeHandle;
-    ros::Publisher  m_publisherPath;
+    ros::Publisher  m_publisherBambiPath;
+    ros::Publisher  m_publisherRosNavPath;
     ros::Subscriber m_subscriberTriggerPathGeneration;
 };
 
