@@ -1,5 +1,4 @@
 <launch>
-        <arg name="TO_altitude" default="10" />
 
 <!-- Run optical_cam node under "bambi" namespace -->
        <node pkg="bambi" type="optical_cam" name="optical_cam" ns="bambi">

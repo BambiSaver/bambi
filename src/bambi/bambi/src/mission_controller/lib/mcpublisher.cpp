@@ -109,3 +109,7 @@ return false;
 
 }
 
+void MCPublisher::triggerPathGeneration(const bambi_msgs::FieldCoverageInfo &field) {
+    m_triggerPathGenerationPublisher.publish(field);
+}
+

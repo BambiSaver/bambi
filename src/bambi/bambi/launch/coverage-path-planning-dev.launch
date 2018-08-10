@@ -1,0 +1,15 @@
+<launch>
+
+<!-- Run boundary_generator node under "bambi" namespace -->
+       <node pkg="bambi" type="boundary_generator" name="boundary_generator" ns="bambi" output="screen">
+         </node>
+
+<!-- Run coverage_path_planner node under "bambi" namespace -->
+       <node pkg="bambi" type="coverage_path_planner" name="coverage_path_planner" ns="bambi" output="screen">
+         </node>
+
+<!-- Run missioncontroller node under "bambi" namespace -->
+       <node pkg="bambi" type="mission_controller" name="mission_controller" ns="bambi" output="screen">
+         </node>
+
+</launch>

@@ -26,6 +26,9 @@
 
 #include <ros/ros.h>
 
+#include <bambi_msgs/FieldCoverageInfo.h>
+
+
 namespace bambi {
 namespace missioncontroller {
 
@@ -36,6 +39,9 @@ public:
 
   bool arm();
   bool takeOff(float takeoffAltitudeGlobal);
+
+  void triggerPathGeneration(const bambi_msgs::FieldCoverageInfo& field);
+
 
 private:
   ros::NodeHandle m_mcNodeHandle;

@@ -25,6 +25,7 @@
 #include "../../lib/utilities.h"
 
 #include <sensor_msgs/NavSatStatus.h>
+#include <bambi_msgs/FieldCoverageInfo.h>
 
 using namespace bambi::missioncontroller;
 
@@ -114,6 +115,18 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             } else {
                 ROS_DEBUG("GPS fix received, but status is not STATUS_FIX, so waiting for next to change to READY");
             }
+        } else if (command == Command::BOUNDARY_GENERATED) {
+            // TODO MOVE THIS 'else if' to State::GENERATING_BOUNDARY
+            bambi_msgs::FieldCoverageInfo fieldWithInfo;
+            fieldWithInfo.field = *(bambi_msgs::Field*)msg;
+            // TODO get this info from m_missionTriggerStart
+            fieldWithInfo.relative_altitude_scanning_in_mm = 8000;
+            fieldWithInfo.relative_altitude_returning_in_mm = 15000;
+            // 8x8m
+            fieldWithInfo.thermal_camera_ground_footprint_height = 8.0f;
+            fieldWithInfo.thermal_camera_ground_footprint_width = 8.0f;
+            changeState(State::COVERAGE_PATH_PLANNING);
+            m_publisher.triggerPathGeneration(fieldWithInfo);
         } else {
             ROS_WARN("Ignoring command %s in state INIT", commandToStringMap.at(command));
             break;

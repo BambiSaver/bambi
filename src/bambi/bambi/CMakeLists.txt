@@ -12,13 +12,14 @@ find_package(catkin REQUIRED COMPONENTS
     rospy
     mavros_msgs
     bambi_msgs
+    geodesy
 )
 
 
 catkin_package(
   INCLUDE_DIRS 
   LIBRARIES bambi
-  CATKIN_DEPENDS mavros_msgs bambi_msgs
+  CATKIN_DEPENDS mavros_msgs bambi_msgs geodesy
   DEPENDS
 )
 

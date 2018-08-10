@@ -24,6 +24,8 @@
 #include "coveragepathplannernode.h"
 #include <bambi_msgs/Path.h>
 
+#include <geodesy/utm.h>
+
 
 using namespace bambi::coverage_path_planner;
 
@@ -43,5 +45,8 @@ void CoveragePathPlannerNode::spin()
 }
 
 void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::FieldCoverageInfo &fieldCoverageInfo) {
-    ROS_INFO("Coverage Path Planning node got field coverage info");
+    ROS_INFO("Got field coverage info, with a path of %d coordinates, flight heights (%f.1, %f.1) and sensor footprint %f.1 x %f.1"
+             , static_cast<int>(fieldCoverageInfo.field.boundary_path.size()), fieldCoverageInfo.relative_altitude_returning_in_mm / 1E3
+             , fieldCoverageInfo.relative_altitude_scanning_in_mm / 1E3, fieldCoverageInfo.thermal_camera_ground_footprint_width
+             , fieldCoverageInfo.thermal_camera_ground_footprint_height);
 }

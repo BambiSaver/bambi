@@ -44,8 +44,8 @@ class BoundaryGeneratorNode():
                 splitted = c.split(',')
                 lon = splitted[0]
                 lat = splitted[1]
-                pos.latitude = lat
-                pos.longitude = lon
+                pos.latitude = float(lat)
+                pos.longitude = float(lon)
                 field.boundary_path.append(pos)
 
         rospy.loginfo("Publishing field with %d coordinates", len(field.boundary_path))
