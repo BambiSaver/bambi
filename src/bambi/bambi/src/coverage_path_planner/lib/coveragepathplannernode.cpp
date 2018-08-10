@@ -379,5 +379,8 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
         }
     }
 
+    // mark last POS
+    directionMatrix[currentPos.first][currentPos.second] = directionMatrix[currentPos.first][currentPos.second]  = std::string("#") + directionMatrix[currentPos.first][currentPos.second] + std::string("#");
+
     printDirectionMatrix(directionMatrix, n_N, n_E);
 }
