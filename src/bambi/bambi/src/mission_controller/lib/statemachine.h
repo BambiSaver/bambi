@@ -38,8 +38,11 @@
 #include <std_msgs/Bool.h>
 #include <map>
 
+#define MAX_ARMING_TRIES 5
+
 namespace bambi {
 namespace missioncontroller {
+
 
 class StateMachine
 {
@@ -105,9 +108,21 @@ private:
     
     State m_state;
     MCPublisher m_publisher;
+
+    //Arming attriburte
     rosTimerProviderFunction m_armTimerProviderFunction;
     ros::Timer m_armTimer;
-    
+    uint8_t m_armingTries;
+
+
+    //REMEMBER the global position published by mavros has:
+    //      latitude    (WGS84)
+    //      longitude   (WGS84)
+    //      altitude    (AMSL)
+
+    //home position
+    sensor_msgs::NavSatFix m_homeGlobalPosition;
+
     mavros_msgs::BambiMissionTrigger m_missionTriggerStart;
     mavros_msgs::ExtendedState::_landed_state_type m_lastUavLandedState;
     mavros_msgs::State::_mode_type m_lastUavMode;
