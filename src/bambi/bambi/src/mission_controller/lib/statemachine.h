@@ -106,6 +106,7 @@ private:
     State m_state;
     MCPublisher m_publisher;
     rosTimerProviderFunction m_armTimerProviderFunction;
+    ros::Timer m_armTimer;
     
     mavros_msgs::BambiMissionTrigger m_missionTriggerStart;
     mavros_msgs::ExtendedState::_landed_state_type m_lastUavLandedState;

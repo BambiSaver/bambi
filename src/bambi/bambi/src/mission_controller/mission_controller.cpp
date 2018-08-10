@@ -36,7 +36,8 @@ StateMachine* smptr;
 ros::NodeHandle* nhptr;
 
 ros::Timer rosArmTimerProviderFunction (ros::Duration period) {
-  return nhptr->createTimer(period, &StateMachine::cb_arming_timer, smptr, true, false);
+    ROS_INFO("CREATING TIMER");
+    return nhptr->createTimer(period, &StateMachine::cb_arming_timer, smptr, true, false);
 }
 
 

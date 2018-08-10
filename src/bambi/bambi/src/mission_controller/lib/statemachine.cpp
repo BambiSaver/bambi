@@ -123,22 +123,19 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
         if (command == Command::MISSIONTRIGGER) {
             auto missionTriggerMsg = (mavros_msgs::BambiMissionTrigger*)msg;
 
-
             if (missionTriggerMsg->startStop) {
                 //TODO: get alt_offset from BambiMissionTrigger msg
                 //float alt_offset = 10.f;
                 m_missionTriggerStart = *missionTriggerMsg;
+
                 //float altitude = static_cast<float>(m_lastGlobalPosition.altitude);
                 ROS_INFO("MISSIONTRIGGER received, sending ARM COMMAND");
                 
                 changeState(State::ARMING);
                 
                 // create and trigger arm timer
-                //PER FLO: conviene metterlo private o ricrearlo ogni volta?
-                // mi ricordo che si potrebbe anche mettere nel metodo
-                //e fare in modo che non venga distrutto ad ogni chiamata
-                ros::Timer timer = m_armTimerProviderFunction(ros::Duration(2.));
-                timer.start();
+                m_armTimer = m_armTimerProviderFunction(ros::Duration(2.));
+                m_armTimer.start();
                         
                 //m_publisher.takeOff(altitude+alt_offset);
                 //ROS_INFO("--BAMBI--  Target Takeoff altitude %f", altitude+alt_offset);
@@ -146,111 +143,110 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
                 ROS_WARN("MISSIONTRIGGER received: Mission not started yet, cannot STOP");
             }
         } else if (command == Command::GLOBAL_POSITION_UPDATE) {
-              // silently ignore, because position update is saved in handler, but not used in 
+            // silently ignore pos update, because not used here
         } else {
-            ROS_DEBUG("Ignoring command %s in state READY", commandToStringMap.at(command));
+            ROS_WARN("Ignoring command %s in state READY", commandToStringMap.at(command));
         }
         break;
     case State::ARMING:
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
-       } else if (command == Command::TRY_ARM_TIMER_SHOT) {
-           ROS_INFO("timer expired");
+        } else if (command == Command::TRY_ARM_TIMER_SHOT) {
+            ROS_INFO("timer expired");
             if (m_publisher.arm()){
-               ROS_INFO("Copter ARMED, sending takeoff message");
-               float globalAltitudeTO = static_cast<float>(m_lastGlobalPosition.altitude) + m_missionTriggerStart.altitude;
-                if(m_publisher.takeOff(globalAltitudeTO)){
+                ROS_INFO("Copter ARMED, sending takeoff message");
+                float globalAltitudeTO = static_cast<float>(m_lastGlobalPosition.altitude) + m_missionTriggerStart.altitude;
+                if (m_publisher.takeOff(globalAltitudeTO)) {
                     changeState(State::TAKING_OFF);
-                }else{
+                } else {
                     //### FORSE SERVE IL DISARM ###
                     ROS_WARN("TAKING OFF FAILED, going back to READY state");
                 }
-
+            } else{
+                //TODO: set a counter which stop try arming after 5 times create and trigger arm timer
+                m_armTimer = m_armTimerProviderFunction(ros::Duration(2.));
+                m_armTimer.start();
             }
-           else{
-               //TODO: set a counter which stop try arming after 5 times
-               // create and trigger arm timer
-               ros::Timer timer = m_armTimerProviderFunction(ros::Duration(2.));
-               timer.start();
-           }
-
+        } else if (command == Command::GLOBAL_POSITION_UPDATE) {
+            // silently ignore pos update, because not used here
         } else {
-                    ROS_DEBUG("Ignoring command %s in state ARMING", commandToStringMap.at(command));
-                }
-                break;
-            case State::TAKING_OFF:
-                if (command == Command::MISSIONTRIGGER) {
-                    ROS_INFO("Mission trigger received but not handled");
-                } else {
-                    ROS_DEBUG("Ignoring command %s in state TAKING_OFF", commandToStringMap.at(command));
-                }
-                break;
-            case State::STARTING_PHOTO_MISSION:
-                if (command == Command::MISSIONTRIGGER) {
-                    ROS_INFO("Mission trigger received but not handled");
-                } else {
-                    ROS_DEBUG("Ignoring command %s in state STARTING_PHOTO_MISSION", commandToStringMap.at(command));
-                }
-                break;
-            case State::REACHING_MISSION_START_POINT:
-                if (command == Command::MISSIONTRIGGER) {
-                    ROS_INFO("Mission trigger received but not handled");
-                } else {
-                    ROS_DEBUG("Ignoring command %s in state REACHING_MISSION_START_POINT", commandToStringMap.at(command));
-                }
-                break;
-            case State::TAKING_ORTHO_PHOTO:
-                if (command == Command::MISSIONTRIGGER) {
-                    ROS_INFO("Mission trigger received but not handled");
-                } else {
-                    ROS_DEBUG("Ignoring command %s in state TAKING_ORTHO_PHOTO", commandToStringMap.at(command));
-                }
-                break;
-            case State::GENERATING_BOUNDARY:
-                if (command == Command::MISSIONTRIGGER) {
-                    ROS_INFO("Mission trigger received but not handled");
-                } else {
-                    ROS_DEBUG("Ignoring command %s in state GENERATING_BOUNDARY", commandToStringMap.at(command));
-                }
-                break;
-            case State::COVERAGE_PATH_PLANNING:
-                if (command == Command::MISSIONTRIGGER) {
-                    ROS_INFO("Mission trigger received but not handled");
-                } else {
-                    ROS_DEBUG("Ignoring command %s in state COVERAGE_PATH_PLANNING", commandToStringMap.at(command));
-                }
-                break;
-            case State::GENERATING_TRAJECTORY:
-                if (command == Command::MISSIONTRIGGER) {
-                    ROS_INFO("Mission trigger received but not handled");
-                } else {
-                    ROS_DEBUG("Ignoring command %s in state GENERATING_TRAJECTORY", commandToStringMap.at(command));
-                }
-                break;
-            case State::COVERAGE_FLIGHT:
-                if (command == Command::MISSIONTRIGGER) {
-                    ROS_INFO("Mission trigger received but not handled");
-                } else {
-                    ROS_DEBUG("Ignoring command %s in state COVERAGE_FLIGHT", commandToStringMap.at(command));
-                }
-                break;
-            case State::LANDING:
-                if (command == Command::MISSIONTRIGGER) {
-                    ROS_INFO("Mission trigger received but not handled");
-                } else {
-                    ROS_DEBUG("Ignoring command %s in state LANDING", commandToStringMap.at(command));
-                }
-                break;
-            case State::MISSION_CANCELLING_RTL:
-                if (command == Command::MISSIONTRIGGER) {
-                    ROS_INFO("Mission trigger received but not handled");
-                } else {
-                    ROS_DEBUG("Ignoring command %s in state MISSION_CANCELLING_RTL", commandToStringMap.at(command));
-                }
-                break;
-
-            }
+            ROS_WARN("Ignoring command %s in state ARMING", commandToStringMap.at(command));
         }
+        break;
+    case State::TAKING_OFF:
+        if (command == Command::MISSIONTRIGGER) {
+            ROS_INFO("Mission trigger received but not handled");
+        } else if (command == Command::GLOBAL_POSITION_UPDATE) {
+            // TODO tracking height to pass to next
+        } else {
+            ROS_WARN("Ignoring command %s in state TAKING_OFF", commandToStringMap.at(command));
+        }
+        break;
+    case State::STARTING_PHOTO_MISSION:
+        if (command == Command::MISSIONTRIGGER) {
+            ROS_INFO("Mission trigger received but not handled");
+        } else {
+            ROS_WARN("Ignoring command %s in state STARTING_PHOTO_MISSION", commandToStringMap.at(command));
+        }
+        break;
+    case State::REACHING_MISSION_START_POINT:
+        if (command == Command::MISSIONTRIGGER) {
+            ROS_INFO("Mission trigger received but not handled");
+        } else {
+            ROS_WARN("Ignoring command %s in state REACHING_MISSION_START_POINT", commandToStringMap.at(command));
+        }
+        break;
+    case State::TAKING_ORTHO_PHOTO:
+        if (command == Command::MISSIONTRIGGER) {
+            ROS_INFO("Mission trigger received but not handled");
+        } else {
+            ROS_WARN("Ignoring command %s in state TAKING_ORTHO_PHOTO", commandToStringMap.at(command));
+        }
+        break;
+    case State::GENERATING_BOUNDARY:
+        if (command == Command::MISSIONTRIGGER) {
+            ROS_INFO("Mission trigger received but not handled");
+        } else {
+            ROS_WARN("Ignoring command %s in state GENERATING_BOUNDARY", commandToStringMap.at(command));
+        }
+        break;
+    case State::COVERAGE_PATH_PLANNING:
+        if (command == Command::MISSIONTRIGGER) {
+            ROS_INFO("Mission trigger received but not handled");
+        } else {
+            ROS_WARN("Ignoring command %s in state COVERAGE_PATH_PLANNING", commandToStringMap.at(command));
+        }
+        break;
+    case State::GENERATING_TRAJECTORY:
+        if (command == Command::MISSIONTRIGGER) {
+            ROS_INFO("Mission trigger received but not handled");
+        } else {
+            ROS_WARN("Ignoring command %s in state GENERATING_TRAJECTORY", commandToStringMap.at(command));
+        }
+        break;
+    case State::COVERAGE_FLIGHT:
+        if (command == Command::MISSIONTRIGGER) {
+            ROS_INFO("Mission trigger received but not handled");
+        } else {
+            ROS_WARN("Ignoring command %s in state COVERAGE_FLIGHT", commandToStringMap.at(command));
+        }
+        break;
+    case State::LANDING:
+        if (command == Command::MISSIONTRIGGER) {
+            ROS_INFO("Mission trigger received but not handled");
+        } else {
+            ROS_WARN("Ignoring command %s in state LANDING", commandToStringMap.at(command));
+        }
+        break;
+    case State::MISSION_CANCELLING_RTL:
+        if (command == Command::MISSIONTRIGGER) {
+            ROS_INFO("Mission trigger received but not handled");
+        } else {
+            ROS_WARN("Ignoring command %s in state MISSION_CANCELLING_RTL", commandToStringMap.at(command));
+        }
+        break;
+    }
+}
 
 void StateMachine::changeState(StateMachine::State newState) {
   ROS_INFO("Changing state from %s to %s", stateToStringMap.at(m_state), stateToStringMap.at(newState));
