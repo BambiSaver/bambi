@@ -28,7 +28,7 @@ class BoundaryGeneratorNode():
         # fileName:
         # orthPhoto.filenameWithFullPath;
 
-        pos = GeoPosition2D();
+
         field = Field();
         
 
@@ -44,6 +44,7 @@ class BoundaryGeneratorNode():
                 splitted = c.split(',')
                 lon = splitted[0]
                 lat = splitted[1]
+                pos = GeoPosition2D();
                 pos.latitude = float(lat)
                 pos.longitude = float(lon)
                 field.boundary_path.append(pos)
