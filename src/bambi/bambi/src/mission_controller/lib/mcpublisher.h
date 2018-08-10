@@ -27,7 +27,7 @@
 #include <ros/ros.h>
 
 #include <bambi_msgs/FieldCoverageInfo.h>
-
+#include <mavros_msgs/WaypointPush.h>
 
 namespace bambi {
 namespace missioncontroller {
@@ -39,6 +39,8 @@ public:
 
   bool arm();
   bool takeOff(float takeoffAltitudeGlobal);
+  bool clearWPList();
+  bool pushWPList(mavros_msgs::WaypointPush &commandWPPush);
 
   void triggerPathGeneration(const bambi_msgs::FieldCoverageInfo& field);
 

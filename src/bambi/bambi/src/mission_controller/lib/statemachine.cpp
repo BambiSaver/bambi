@@ -26,7 +26,9 @@
 
 #include <sensor_msgs/NavSatStatus.h>
 #include <bambi_msgs/FieldCoverageInfo.h>
-
+#include <mavros_msgs/Waypoint.h>
+#include <mavros_msgs/WaypointPush.h>
+#include <mavros_msgs/CommandCode.h>
 using namespace bambi::missioncontroller;
 
 
@@ -35,6 +37,8 @@ StateMachine::StateMachine(const MCPublisher &publisher, rosTimerProviderFunctio
     m_publisher(publisher),
     m_lastUavLandedState(mavros_msgs::ExtendedState::LANDED_STATE_UNDEFINED),
     m_armTimerProviderFunction(armTimerProvider) {
+
+
 }
 
 
@@ -141,23 +145,18 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             auto missionTriggerMsg = (mavros_msgs::BambiMissionTrigger*)msg;
 
             if (missionTriggerMsg->startStop) {
-                //TODO: get alt_offset from BambiMissionTrigger msg
-                //float alt_offset = 10.f;
                 m_missionTriggerStart = *missionTriggerMsg;
-
                 //float altitude = static_cast<float>(m_lastGlobalPosition.altitude);
                 ROS_INFO("MISSIONTRIGGER received, sending ARM COMMAND");
                 
+                m_armingTries = 0;
                 changeState(State::ARMING);
-                
                 // create and trigger arm timer
                 m_armTimer = m_armTimerProviderFunction(ros::Duration(2.));
                 m_armTimer.start();
                         
-                //m_publisher.takeOff(altitude+alt_offset);
-                //ROS_INFO("--BAMBI--  Target Takeoff altitude %f", altitude+alt_offset);
             } else {
-                ROS_WARN("MISSIONTRIGGER received: Mission not started yet, cannot STOP");
+                ROS_WARN("MISSIONTRIGGER STOP received: Mission not started yet, cannot STOP");
             }
         } else if (command == Command::GLOBAL_POSITION_UPDATE) {
             // silently ignore pos update, because not used here
@@ -169,20 +168,28 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
         } else if (command == Command::TRY_ARM_TIMER_SHOT) {
-            ROS_INFO("timer expired");
-            if (m_publisher.arm()){
-                ROS_INFO("Copter ARMED, sending takeoff message");
-                float globalAltitudeTO = static_cast<float>(m_lastGlobalPosition.altitude) + m_missionTriggerStart.altitude;
-                if (m_publisher.takeOff(globalAltitudeTO)) {
-                    changeState(State::TAKING_OFF);
-                } else {
-                    //### FORSE SERVE IL DISARM ###
-                    ROS_WARN("TAKING OFF FAILED, going back to READY state");
+            if(m_armingTries < MAX_ARMING_TRIES){
+                if (m_publisher.arm()){
+                    ROS_INFO("Copter ARMED, sending takeoff message (altitude= %.2fm)", m_missionTriggerStart.altitude);
+                    //save home position before sending takeoff request
+                    m_homeGlobalPosition = m_lastGlobalPosition;
+                    float globalAltitudeTO = static_cast<float>(m_lastGlobalPosition.altitude) + m_missionTriggerStart.altitude;
+                    if (m_publisher.takeOff(globalAltitudeTO)) {
+                        ROS_INFO("Changing state to TAKING_OFF");
+                        changeState(State::TAKING_OFF);
+                    } else {
+                        //Disarm it is not explicitly required as the PX4 disarm after a certein period of inactivity
+                        ROS_WARN("TAKING OFF FAILED, going back to READY state");
+                    }
+                } else{
+                    m_armTimer = m_armTimerProviderFunction(ros::Duration(2.));
+                    m_armTimer.start();
                 }
+                m_armingTries++;
             } else{
-                //TODO: set a counter which stop try arming after 5 times create and trigger arm timer
-                m_armTimer = m_armTimerProviderFunction(ros::Duration(2.));
-                m_armTimer.start();
+                //no arm after MAX_ARMING_TRIES tries
+                ROS_ERROR("NO ARMING after %d tries, going back to READY ", MAX_ARMING_TRIES);
+                changeState(State::READY);
             }
         } else if (command == Command::GLOBAL_POSITION_UPDATE) {
             // silently ignore pos update, because not used here
@@ -195,11 +202,41 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             ROS_INFO("Mission trigger received but not handled");
         } else if (command == Command::GLOBAL_POSITION_UPDATE) {
             // TODO tracking height to pass to next
+            float lastRelativeAltitude = static_cast<float>(m_lastGlobalPosition.altitude - m_homeGlobalPosition.altitude);
+
+            if (std::abs(lastRelativeAltitude-m_missionTriggerStart.altitude)< 0.1f){
+                    //takeoff target altitude reached
+                    changeState(State::STARTING_PHOTO_MISSION);
+                    if(m_publisher.clearWPList()){
+
+                        mavros_msgs::Waypoint photoWP;
+                        photoWP.command = mavros_msgs::CommandCode::NAV_WAYPOINT;
+                        photoWP.is_current = true;
+                        photoWP.frame = mavros_msgs::Waypoint::FRAME_GLOBAL_REL_ALT;
+                        photoWP.x_lat = m_missionTriggerStart.latitude;
+                        photoWP.y_long = m_missionTriggerStart.longitude;
+                        photoWP.z_alt = static_cast<double>(m_missionTriggerStart.altitude); //relative altitude
+
+                        mavros_msgs::WaypointPush listWP;
+                        listWP.request.waypoints.push_back(photoWP);
+
+                        if(m_publisher.pushWPList(listWP)){
+                            //Waypoints list successfully sent
+
+                            changeState(State::STARTING_PHOTO_MISSION);
+                            ROS_INFO("Changing state to STARTING_PHOTO_MISSION");
+                        }
+                    }
+            } else{
+                //do nothing but wait for next globalPosition update
+            }
+
         } else {
             ROS_WARN("Ignoring command %s in state TAKING_OFF", commandToStringMap.at(command));
         }
         break;
     case State::STARTING_PHOTO_MISSION:
+
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
         } else {
