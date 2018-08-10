@@ -102,6 +102,22 @@ void StateMachine::cb_coverage_flight_reached_home(const std_msgs::Bool &msg) {
  */
 
 void StateMachine::handleStateMachineCommand(StateMachine::Command command, const void *msg) {
+    if (command == Command::BOUNDARY_GENERATED) {
+        // TODO MOVE THIS 'if' to State::GENERATING_BOUNDARY
+        bambi_msgs::FieldCoverageInfo fieldWithInfo;
+        fieldWithInfo.field = *(bambi_msgs::Field*)msg;
+        // TODO get this info from m_missionTriggerStart
+        fieldWithInfo.relative_altitude_scanning_in_mm = 8000;
+        fieldWithInfo.relative_altitude_returning_in_mm = 15000;
+        // 8x8m
+        fieldWithInfo.thermal_camera_ground_footprint_height = 8.0f;
+        fieldWithInfo.thermal_camera_ground_footprint_width = 8.0f;
+        fieldWithInfo.home_position.latitude = 46.453066;
+        fieldWithInfo.home_position.longitude = 11.492082;
+        changeState(State::COVERAGE_PATH_PLANNING);
+        m_publisher.triggerPathGeneration(fieldWithInfo);
+        return;
+    }
     switch (m_state) {
     case State::INIT:
         if (command == Command::MISSIONTRIGGER) {
@@ -115,20 +131,6 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             } else {
                 ROS_DEBUG("GPS fix received, but status is not STATUS_FIX, so waiting for next to change to READY");
             }
-        } else if (command == Command::BOUNDARY_GENERATED) {
-            // TODO MOVE THIS 'else if' to State::GENERATING_BOUNDARY
-            bambi_msgs::FieldCoverageInfo fieldWithInfo;
-            fieldWithInfo.field = *(bambi_msgs::Field*)msg;
-            // TODO get this info from m_missionTriggerStart
-            fieldWithInfo.relative_altitude_scanning_in_mm = 8000;
-            fieldWithInfo.relative_altitude_returning_in_mm = 15000;
-            // 8x8m
-            fieldWithInfo.thermal_camera_ground_footprint_height = 8.0f;
-            fieldWithInfo.thermal_camera_ground_footprint_width = 8.0f;
-            fieldWithInfo.home_position.latitude = 46.453066;
-            fieldWithInfo.home_position.longitude = 11.492082;
-            changeState(State::COVERAGE_PATH_PLANNING);
-            m_publisher.triggerPathGeneration(fieldWithInfo);
         } else {
             ROS_WARN("Ignoring command %s in state INIT", commandToStringMap.at(command));
             break;
