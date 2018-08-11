@@ -26,8 +26,7 @@ master.mav.command_long_send(
 #    mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
     2720,
     0,
-    1, 0, 0, 10, 0, 0, 0);
-
+    1, 46.453072, 11.492048, 10, 0, 0, 0);
 
 
 # Check ACK

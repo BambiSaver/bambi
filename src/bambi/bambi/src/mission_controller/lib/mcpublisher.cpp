@@ -150,6 +150,26 @@ bool MCPublisher::pushWPList(mavros_msgs::WaypointPush &commandWPPush){
 
 }
 
+bool MCPublisher::setMode(mavros_msgs::SetMode &commandSetMode){
+    if (!ros::service::waitForService("/mavros/set_mode", 5)){
+        ROS_ERROR("The service /mavros/set_mode is not avaiable");
+        return false;
+    }
+
+
+    if (!ros::service::call("/mavros/set_mode",commandSetMode)) {
+          ROS_ERROR("Set_mode service cannot send SetMode message");
+          return false;
+    }
+
+    if (commandSetMode.response.mode_sent == commandSetMode.request.base_mode){
+          ROS_INFO("Mode id %d succesfully sent", commandSetMode.response.mode_sent);
+          return true;
+    }
+    return false;
+
+}
+
 void MCPublisher::triggerPathGeneration(const bambi_msgs::FieldCoverageInfo &field) {
     m_triggerPathGenerationPublisher.publish(field);
 }
