@@ -29,6 +29,7 @@
 #include <mavros_msgs/Waypoint.h>
 #include <mavros_msgs/WaypointPush.h>
 #include <mavros_msgs/CommandCode.h>
+#include <mavros_msgs/SetMode.h>
 using namespace bambi::missioncontroller;
 
 
@@ -78,7 +79,7 @@ void StateMachine::cb_arming_timer(const ros::TimerEvent &) {
   handleStateMachineCommand(Command::TRY_ARM_TIMER_SHOT, NULL);
 }
 void StateMachine::cb_mission_waypoint_reached(const mavros_msgs::WaypointReached &msg) {
-  handleStateMachineCommand(Command::MISSION_ITEM_REACHED, (void*)&msg);
+    handleStateMachineCommand(Command::MISSION_ITEM_REACHED, (void*)&msg);
 }
 void StateMachine::cb_orthophoto_ready(const bambi_msgs::OrthoPhoto &msg) {
   handleStateMachineCommand(Command::ORTHO_PHOTO_READY, (void*)&msg);
@@ -175,11 +176,11 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
                     m_homeGlobalPosition = m_lastGlobalPosition;
                     float globalAltitudeTO = static_cast<float>(m_lastGlobalPosition.altitude) + m_missionTriggerStart.altitude;
                     if (m_publisher.takeOff(globalAltitudeTO)) {
-                        ROS_INFO("Changing state to TAKING_OFF");
                         changeState(State::TAKING_OFF);
                     } else {
                         //Disarm it is not explicitly required as the PX4 disarm after a certein period of inactivity
                         ROS_WARN("TAKING OFF FAILED, going back to READY state");
+                        changeState(State::READY);
                     }
                 } else{
                     m_armTimer = m_armTimerProviderFunction(ros::Duration(2.));
@@ -197,6 +198,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             ROS_WARN("Ignoring command %s in state ARMING", commandToStringMap.at(command));
         }
         break;
+
     case State::TAKING_OFF:
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
@@ -206,7 +208,6 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
 
             if (std::abs(lastRelativeAltitude-m_missionTriggerStart.altitude)< 0.1f){
                     //takeoff target altitude reached
-                    changeState(State::STARTING_PHOTO_MISSION);
                     if(m_publisher.clearWPList()){
 
                         mavros_msgs::Waypoint photoWP;
@@ -222,9 +223,17 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
 
                         if(m_publisher.pushWPList(listWP)){
                             //Waypoints list successfully sent
-
-                            changeState(State::STARTING_PHOTO_MISSION);
-                            ROS_INFO("Changing state to STARTING_PHOTO_MISSION");
+                            mavros_msgs::SetMode commandSetMode;
+                            commandSetMode.request.base_mode = 1; //stands for MAV_MODE_FLAG_CUSTOM_MODE_ENABLED
+                            commandSetMode.request.custom_mode = "AUTO.MISSION";
+                            if(m_publisher.setMode(commandSetMode)){
+                             //mission start command send (i.e change mode to AUTO.MISSION)
+                                changeState(State::STARTING_PHOTO_MISSION);
+                            }
+                            else{
+                                //Not able to change mode and start mission
+                                changeState(State::READY);
+                            }
                         }
                     }
             } else{
@@ -235,21 +244,39 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             ROS_WARN("Ignoring command %s in state TAKING_OFF", commandToStringMap.at(command));
         }
         break;
-    case State::STARTING_PHOTO_MISSION:
 
+    case State::STARTING_PHOTO_MISSION:
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
+
+        }else if (command == Command::UAV_MODE_UPDATE){
+            if (m_lastUavMode == "AUTO.MISSION"){
+                //mission has started
+                changeState(State::REACHING_MISSION_START_POINT);
+            }else{
+                ROS_ERROR("Unexpected error in mode change going back to READY state");
+                changeState(State::READY);
+            }
+
         } else {
             ROS_WARN("Ignoring command %s in state STARTING_PHOTO_MISSION", commandToStringMap.at(command));
         }
         break;
+
     case State::REACHING_MISSION_START_POINT:
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
+        }else if (command == Command::MISSION_ITEM_REACHED){
+            //we have reached the mission starting point
+            //TOD: SWITCH MODE TO LOITER (potresti avere problemi nel setMode, vedi https://github.com/mavlink/mavros/pull/811)
+
+
+            changeState(State::TAKING_ORTHO_PHOTO);
         } else {
             ROS_WARN("Ignoring command %s in state REACHING_MISSION_START_POINT", commandToStringMap.at(command));
         }
         break;
+
     case State::TAKING_ORTHO_PHOTO:
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
@@ -323,7 +350,7 @@ const std::map<StateMachine::State, const char *>  StateMachine::stateToStringMa
   { StateMachine::State::READY, "READY" },
   { StateMachine::State::ARMING, "ARMING" },
   { StateMachine::State::TAKING_OFF, "TAKING_OFF" },
-  { StateMachine::State::STARTING_PHOTO_MISSION, "STARTING_PHOTO_MISSION" },
+  { StateMachine::State::STARTING_PHOTO_MISSION, "STARTING_PHOTO_MISSION" },  
   { StateMachine::State::REACHING_MISSION_START_POINT, "REACHING_MISSION_START_POINT" },
   { StateMachine::State::TAKING_ORTHO_PHOTO, "TAKING_ORTHO_PHOTO" },
   { StateMachine::State::GENERATING_BOUNDARY, "GENERATING_BOUNDARY" },

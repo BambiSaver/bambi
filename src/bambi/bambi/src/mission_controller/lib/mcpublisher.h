@@ -28,21 +28,21 @@
 
 #include <bambi_msgs/FieldCoverageInfo.h>
 #include <mavros_msgs/WaypointPush.h>
-
+#include <mavros_msgs/SetMode.h>
 namespace bambi {
 namespace missioncontroller {
 
 class MCPublisher
 {
 public:
-  MCPublisher(const ros::NodeHandle& missioncontrollerNodeHandle);
+    MCPublisher(const ros::NodeHandle& missioncontrollerNodeHandle);
 
-  bool arm();
-  bool takeOff(float takeoffAltitudeGlobal);
-  bool clearWPList();
-  bool pushWPList(mavros_msgs::WaypointPush &commandWPPush);
-
-  void triggerPathGeneration(const bambi_msgs::FieldCoverageInfo& field);
+    bool arm();
+    bool takeOff(float takeoffAltitudeGlobal);
+    bool clearWPList();
+    bool pushWPList(mavros_msgs::WaypointPush &commandWPPush);
+    bool setMode(mavros_msgs::SetMode &commandSetMode);
+    void triggerPathGeneration(const bambi_msgs::FieldCoverageInfo& field);
 
 
 private:
