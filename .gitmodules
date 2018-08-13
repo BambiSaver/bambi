@@ -6,3 +6,6 @@
 	path = src/mavlink
 	url = git@github.com:BambiSaver/mavlink-gbp-release.git
 	branch = release/kinetic/mavlink
+[submodule "src/bambi/bambi/src/coverage_path_planner/lib/spline"]
+	path = src/bambi/bambi/src/coverage_path_planner/lib/spline
+	url = git@github.com:/BambiSaver/cpp-spline

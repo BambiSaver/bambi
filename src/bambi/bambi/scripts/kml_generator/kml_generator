@@ -1,0 +1,93 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import roslib
+roslib.load_manifest('bambi_msgs')
+import rospy
+import sys
+import datetime
+
+# parse kml files
+from pykml import parser
+from pykml.factory import write_python_script_for_kml_document
+from lxml import etree
+from pykml.factory import KML_ElementMaker as KML
+from pykml.factory import ATOM_ElementMaker as ATOM
+from pykml.factory import GX_ElementMaker as GX
+
+from bambi_msgs.msg import Path
+
+
+
+
+class KmlGeneratorNode():
+
+    def __init__(self):
+        #self.m_boundaryPublisher = rospy.Publisher("~boundary", Field, queue_size=5)
+
+        rospy.Subscriber('/bambi/coverage_path_planner/path', Path, self.cb_path)
+
+        rospy.spin()
+
+
+    def cb_path(self, Path):
+
+        coordinateString = ""
+
+        for p in Path.geometric_path:
+            coordinateString += str(p.geopos_2d.longitude) + "," + str(p.geopos_2d.latitude) + ",0 "
+
+        doc = KML.kml(
+            KML.Document(
+              KML.name('Shapes'),
+              KML.Style(
+                KML.LineStyle(
+                  KML.width('2.5'),
+                ),
+                id="thickLine",
+              ),
+              KML.Style(
+                KML.PolyStyle(
+                  KML.color('7fffffff'),
+                ),
+                id="transparent50Poly",
+              ),
+              KML.Placemark(
+                KML.name('Shape'),
+                KML.description('Shape'),
+                KML.LineString(
+                  KML.coordinates(coordinateString),
+                ),
+                KML.styleUrl('#thickLine'),
+              ),
+            ),
+          )
+        #print etree.tostring(doc, pretty_print=True)
+
+        fileName = '/home/flo/cloud/bambi/path-output-' + datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S') + '.kml'
+
+        rospy.loginfo("Path received, generating KML markup and writing into " + fileName)
+
+        # output a KML file
+        outfile = file(fileName,'w')
+        outfile.write(etree.tostring(doc, pretty_print=True))
+
+
+
+# Main function.
+if __name__ == '__main__':
+    # Initialize the node and name it.
+    rospy.init_node('kml_generator')
+
+
+    # with open('/home/flo/cloud/bambi/sample-border-1.kml') as f:
+    #   doc = parser.parse(f).getroot()
+    #   script = write_python_script_for_kml_document(doc)
+    #   print script
+
+
+    rospy.loginfo("KMLGenerator STARTUP")
+    # Go to class functions that do all the heavy lifting. Do error checking.
+    try:
+        boundaryGeneratorNode = KmlGeneratorNode()
+    except rospy.ROSInterruptException: pass

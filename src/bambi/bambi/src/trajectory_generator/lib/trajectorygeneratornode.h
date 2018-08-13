@@ -26,6 +26,9 @@
 
 #include <ros/ros.h>
 #include "bambi_msgs/PathWithConstraints.h"
+#include <boost/geometry/geometries/point_xy.hpp>
+
+typedef boost::geometry::model::d2::point_xy<double> point_xy_t;
 
 namespace bambi {
 namespace trajectory_generator{
@@ -42,6 +45,7 @@ private:
     ros::NodeHandle m_nodeHandle;
     ros::Publisher  m_publisherTrajectory;
     ros::Subscriber m_subscriberTriggerTrajectoryGeneration;
+    std::vector<point_xy_t> m_path_xy;
 };
 }
 }
