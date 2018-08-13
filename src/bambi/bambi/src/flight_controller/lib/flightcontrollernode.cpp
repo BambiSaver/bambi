@@ -49,19 +49,19 @@ FlightControllerNode::FlightControllerNode(const ros::NodeHandle &nodeHandle)
 }
 
 void FlightControllerNode::cb_trigger_coverage_flight(const bambi_msgs::Trajectory &trajectory) {
-  ROS_INFO("Flight Controller got coverage flight trigger with trajectory");
+    ROS_INFO("Flight Controller got coverage flight trigger with trajectory");
 }
 
 void FlightControllerNode::cb_trigger_hover(const std_msgs::Bool &hoverOn) {
-  ROS_INFO("Flight Controller got hover trigger %s", hoverOn.data ? "ON" : "OFF");
+    ROS_INFO("Flight Controller got hover trigger %s", hoverOn.data ? "ON" : "OFF");
 }
 
 void FlightControllerNode::cb_hovering_position(const mavros_msgs::GlobalPositionTarget &hoveringPosition) {
-  ROS_INFO("Flight Controller got hovering position update");
+    ROS_INFO("Flight Controller got hovering position update");
 }
 
 void FlightControllerNode::spin() {
     ros::spin();
-  }
+}
 
 

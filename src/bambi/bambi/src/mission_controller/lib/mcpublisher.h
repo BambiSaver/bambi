@@ -27,8 +27,14 @@
 #include <ros/ros.h>
 
 #include <bambi_msgs/FieldCoverageInfo.h>
+#include <bambi_msgs/PathWithConstraints.h>
+#include <bambi_msgs/OrthoPhoto.h>
+#include <bambi_msgs/Trajectory.h>
+
 #include <mavros_msgs/WaypointPush.h>
 #include <mavros_msgs/SetMode.h>
+
+
 namespace bambi {
 namespace missioncontroller {
 
@@ -42,7 +48,12 @@ public:
     bool clearWPList();
     bool pushWPList(mavros_msgs::WaypointPush &commandWPPush);
     bool setMode(mavros_msgs::SetMode &commandSetMode);
+
+    void triggerOrthPhotoShutter();
+    void triggerBoundaryGeneration(const bambi_msgs::OrthoPhoto&);
     void triggerPathGeneration(const bambi_msgs::FieldCoverageInfo& field);
+    void triggerTrajectoryGeneration(const bambi_msgs::PathWithConstraints& path);
+    void triggerCoverageFlight(const bambi_msgs::Trajectory& trajectory);
 
 
 private:

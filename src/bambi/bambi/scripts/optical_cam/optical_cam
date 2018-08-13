@@ -5,7 +5,7 @@ import roslib
 roslib.load_manifest('bambi_msgs')
 import rospy
 import sys
-
+import os
 
 from bambi_msgs.msg import OrthoPhoto
 from std_msgs.msg import Bool
@@ -26,8 +26,7 @@ class OrthoPhotoNode():
         # Set the message to publish as our custom message.
         msg = OrthoPhoto()
         # Initialize message variables.
-        msg.filenameWithFullPath = "/home/flo/test.jpg"
-
+        msg.filenameWithFullPath = os.path.expandvars('$BAMBI_OWNCLOUD_HOME/sample-border-1.kml')
         self.m_orthoPhotoPublisher.publish(msg)
 
 

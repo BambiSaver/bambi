@@ -32,9 +32,15 @@
 #include <mavros_msgs/SetMode.h>
 using namespace bambi::missioncontroller;
 
+//#define PATH_GENERATOR_DEV_SETUP
+
 
 StateMachine::StateMachine(const MCPublisher &publisher, rosTimerProviderFunction armTimerProvider) :
+#ifdef PATH_GENERATOR_DEV_SETUP
+    m_state(State::GENERATING_BOUNDARY),
+#else
     m_state(State::INIT),
+#endif
     m_publisher(publisher),
     m_lastUavLandedState(mavros_msgs::ExtendedState::LANDED_STATE_UNDEFINED),
     m_armTimerProviderFunction(armTimerProvider) {
@@ -107,25 +113,6 @@ void StateMachine::cb_coverage_flight_reached_home(const std_msgs::Bool &msg) {
  */
 
 void StateMachine::handleStateMachineCommand(StateMachine::Command command, const void *msg) {
-    if (command == Command::BOUNDARY_GENERATED) {
-        // TODO MOVE THIS 'if' to State::GENERATING_BOUNDARY
-        bambi_msgs::FieldCoverageInfo fieldWithInfo;
-        fieldWithInfo.field = *(bambi_msgs::Field*)msg;
-        // TODO get this info from m_missionTriggerStart
-        fieldWithInfo.relative_altitude_scanning_in_mm = 8000;
-        fieldWithInfo.relative_altitude_returning_in_mm = 15000;
-        // 8x8m
-        fieldWithInfo.thermal_camera_ground_footprint_height = 8.0f;
-        fieldWithInfo.thermal_camera_ground_footprint_width = 8.0f;
-        fieldWithInfo.home_position.latitude = 46.452895;
-        fieldWithInfo.home_position.longitude = 11.490920;
-        fieldWithInfo.current_position.geopos_2d.latitude = 46.453066;
-        fieldWithInfo.current_position.geopos_2d.longitude = 11.492082;
-        fieldWithInfo.current_position.altitude_over_ground_in_mm = 70000;
-        changeState(State::COVERAGE_PATH_PLANNING);
-        m_publisher.triggerPathGeneration(fieldWithInfo);
-        return;
-    }
     switch (m_state) {
     case State::INIT:
         if (command == Command::MISSIONTRIGGER) {
@@ -219,7 +206,9 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
                         photoWP.frame = mavros_msgs::Waypoint::FRAME_GLOBAL_REL_ALT;
                         photoWP.x_lat = m_missionTriggerStart.latitude;
                         photoWP.y_long = m_missionTriggerStart.longitude;
-                        photoWP.z_alt = static_cast<double>(m_missionTriggerStart.altitude); //relative altitude
+                        // TODO photoaltitude != m_missionTriggerStart.altitude --> use 70m for now
+                        // static_cast<double>(m_missionTriggerStart.altitude);
+                        photoWP.z_alt = 45.0; //relative altitude
 
                         mavros_msgs::WaypointPush listWP;
                         listWP.request.waypoints.push_back(photoWP);
@@ -257,10 +246,13 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
                 //mission has started
                 changeState(State::REACHING_MISSION_START_POINT);
             }else{
+                // TODO RTL here?
                 ROS_ERROR("Unexpected error in mode change going back to READY state");
                 changeState(State::READY);
             }
 
+        } else if (command == Command::GLOBAL_POSITION_UPDATE) {
+            // savely ignore GPS update, because we are waiting for a vehicle state change here
         } else {
             ROS_WARN("Ignoring command %s in state STARTING_PHOTO_MISSION", commandToStringMap.at(command));
         }
@@ -269,12 +261,17 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
     case State::REACHING_MISSION_START_POINT:
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
-        }else if (command == Command::MISSION_ITEM_REACHED){
+        } else if (command == Command::MISSION_ITEM_REACHED){
             //we have reached the mission starting point
             //TOD: SWITCH MODE TO LOITER (potresti avere problemi nel setMode, vedi https://github.com/mavlink/mavros/pull/811)
 
 
             changeState(State::TAKING_ORTHO_PHOTO);
+            m_publisher.triggerOrthPhotoShutter();
+
+
+        } else if (command == Command::GLOBAL_POSITION_UPDATE) {
+            // savely ignore GPS update, because we are waiting for MISSION_ITEM_REACHED
         } else {
             ROS_WARN("Ignoring command %s in state REACHING_MISSION_START_POINT", commandToStringMap.at(command));
         }
@@ -283,6 +280,16 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
     case State::TAKING_ORTHO_PHOTO:
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
+        } else if (command == Command::ORTHO_PHOTO_READY) {
+            auto photo = (bambi_msgs::OrthoPhoto*)msg;
+
+            changeState(State::GENERATING_BOUNDARY);
+            m_publisher.triggerBoundaryGeneration(*photo);
+
+        } else if (command == Command::GLOBAL_POSITION_UPDATE // savely ignore GPS update, because we are not tracking any position here
+              || command == Command::MISSION_ITEM_REACHED // remaining MISSION_ITEM_REACHED may arrive, all OK
+              ) {
+            // ignore
         } else {
             ROS_WARN("Ignoring command %s in state TAKING_ORTHO_PHOTO", commandToStringMap.at(command));
         }
@@ -290,13 +297,45 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
     case State::GENERATING_BOUNDARY:
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
-        } else {
+        } else if (command == Command::BOUNDARY_GENERATED) {
+            bambi_msgs::FieldCoverageInfo fieldWithInfo;
+            fieldWithInfo.field = *(bambi_msgs::Field*)msg;
+
+            // TODO get this info from m_missionTriggerStart
+            fieldWithInfo.relative_altitude_scanning_in_mm = 8000;
+            fieldWithInfo.relative_altitude_returning_in_mm = 15000;
+            fieldWithInfo.thermal_camera_ground_footprint_height = 8.0f;
+            fieldWithInfo.thermal_camera_ground_footprint_width = 8.0f;
+            fieldWithInfo.home_position.latitude = 46.452895;
+            fieldWithInfo.home_position.longitude = 11.490920;
+            fieldWithInfo.current_position.geopos_2d.latitude = 46.453066;
+            fieldWithInfo.current_position.geopos_2d.longitude = 11.492082;
+            fieldWithInfo.current_position.altitude_over_ground_in_mm = 45000;
+            changeState(State::COVERAGE_PATH_PLANNING);
+            m_publisher.triggerPathGeneration(fieldWithInfo);
+        }  else if (command == Command::GLOBAL_POSITION_UPDATE // savely ignore GPS update, because we are not tracking any position here
+                    || command == Command::MISSION_ITEM_REACHED // remaining MISSION_ITEM_REACHED may arrive, all OK
+                    ) {
+            // ignore
+        }else {
             ROS_WARN("Ignoring command %s in state GENERATING_BOUNDARY", commandToStringMap.at(command));
         }
         break;
     case State::COVERAGE_PATH_PLANNING:
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
+        } else if (command == Command::COVERAGE_PATH_READY) {
+            changeState(State::GENERATING_TRAJECTORY);
+            bambi_msgs::PathWithConstraints path;
+            path.path = *((bambi_msgs::Path*)msg);
+            // TODO get from m_missionTriggerStart (?)
+            path.flight_constraints.max_velocity = 5.0;
+            path.flight_constraints.max_acceleration = 15.0;
+            m_publisher.triggerTrajectoryGeneration(path);
+        } else if (command == Command::GLOBAL_POSITION_UPDATE // savely ignore GPS update, because we are not tracking any position here
+                   || command == Command::MISSION_ITEM_REACHED // remaining MISSION_ITEM_REACHED may arrive, all OK
+              ) {
+            // ignore
         } else {
             ROS_WARN("Ignoring command %s in state COVERAGE_PATH_PLANNING", commandToStringMap.at(command));
         }
@@ -304,6 +343,14 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
     case State::GENERATING_TRAJECTORY:
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
+        } else if (command == Command::TRAJECTORY_READY) {
+            changeState(State::COVERAGE_FLIGHT);
+            auto trajectory = (bambi_msgs::Trajectory*) msg;
+            m_publisher.triggerCoverageFlight(*trajectory);
+        } else if (command == Command::GLOBAL_POSITION_UPDATE // savely ignore GPS update, because we are not tracking any position here
+                   || command == Command::MISSION_ITEM_REACHED // remaining MISSION_ITEM_REACHED may arrive, all OK
+              ) {
+            // ignore
         } else {
             ROS_WARN("Ignoring command %s in state GENERATING_TRAJECTORY", commandToStringMap.at(command));
         }
@@ -311,7 +358,12 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
     case State::COVERAGE_FLIGHT:
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
-        } else {
+        } else if (command == Command::COVERAGE_FC_REACHED_HOME) {
+            ROS_INFO("We reached HOME!!!! (we could land now, don't know how to do that yet)");
+        } else if (command == Command::GLOBAL_POSITION_UPDATE // not used for now, maybe in FlightController
+               ) {
+             // ignore
+         }  else {
             ROS_WARN("Ignoring command %s in state COVERAGE_FLIGHT", commandToStringMap.at(command));
         }
         break;

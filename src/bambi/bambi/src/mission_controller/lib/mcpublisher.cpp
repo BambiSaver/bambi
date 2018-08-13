@@ -22,17 +22,17 @@
  *
  */
 #include "mcpublisher.h"
+
 #include <mavros_msgs/StatusText.h>
 #include <mavros_msgs/CommandTOL.h>
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/GlobalPositionTarget.h>
 #include <mavros_msgs/WaypointClear.h>
+
 #include <bambi_msgs/Field.h>
-#include <bambi_msgs/OrthoPhoto.h>
-#include <bambi_msgs/FieldCoverageInfo.h>
-#include <bambi_msgs/PathWithConstraints.h>
-#include <bambi_msgs/Trajectory.h>
+
 #include <geographic_msgs/GeoPoint.h>
+
 #include <std_msgs/Bool.h>
 
 using namespace bambi::missioncontroller;
@@ -170,7 +170,27 @@ bool MCPublisher::setMode(mavros_msgs::SetMode &commandSetMode){
 
 }
 
+
+void MCPublisher::triggerOrthPhotoShutter() {
+    std_msgs::Bool b;
+    b.data = true;
+    m_triggerShutterPublisher.publish(b);
+}
+
+void MCPublisher::triggerBoundaryGeneration(const bambi_msgs::OrthoPhoto &photo) {
+    m_triggerBoundaryGenerationPublisher.publish(photo);
+}
+
 void MCPublisher::triggerPathGeneration(const bambi_msgs::FieldCoverageInfo &field) {
     m_triggerPathGenerationPublisher.publish(field);
 }
+
+void MCPublisher::triggerTrajectoryGeneration(const bambi_msgs::PathWithConstraints &path) {
+    m_triggerTrajectoryGenerationPublisher.publish(path);
+}
+
+void MCPublisher::triggerCoverageFlight(const bambi_msgs::Trajectory &trajectory) {
+    m_triggerCoverageFlightPublisher.publish(trajectory);
+}
+
 
