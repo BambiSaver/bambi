@@ -5,6 +5,7 @@ import roslib
 roslib.load_manifest('bambi_msgs')
 import rospy
 import sys
+import os
 import datetime
 
 # parse kml files
@@ -64,7 +65,9 @@ class KmlGeneratorNode():
           )
         #print etree.tostring(doc, pretty_print=True)
 
-        fileName = '/home/flo/cloud/bambi/path-output-' + datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S') + '.kml'
+
+        fileName = '$BAMBI_OWNCLOUD_HOME/path-output-' + datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S') + '.kml'
+        fileName = os.path.expandvars(fileName)
 
         rospy.loginfo("Path received, generating KML markup and writing into " + fileName)
 
