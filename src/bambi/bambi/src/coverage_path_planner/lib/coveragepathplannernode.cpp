@@ -42,7 +42,7 @@
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/PoseStamped.h>
 
-#include "../lib/spline/spline/src/main/cpp/CatmullRom.h"
+#include "../lib/spline/spline/src/main/cpp/BSpline.h"
 
 
 using namespace bambi::coverage_path_planner;
@@ -380,8 +380,11 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
                 if (matrix[i][j] >= 0) {
                     reachedEnd = false;
 
+                    bool isDiagnoalField = ((i-currentPos.first) == (j -currentPos.second))
+                                            || ((i-currentPos.first) == -(j -currentPos.second));
+
                     // the higher the better
-                    int priority = matrix[i][j]*10 + (8 - sameValuedNeighborFields(matrix, i, j));
+                    int priority = matrix[i][j]*100 + (8 - sameValuedNeighborFields(matrix, i, j)) * 10 + (1- isDiagnoalField);
                     if (priority > bestPriority) {
                         bestPriority = priority;
                         bestChoice.first = i;
@@ -486,7 +489,7 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
     ROS_INFO("With a resolution of %.2fm for the whole path with a length of %.2fm we need %i intermediate steps",
              resolutionInMeters, pathLength, necessarySteps);
 
-    boost::shared_ptr<cppspline::Curve> curve(new cppspline::CatmullRom());
+    boost::shared_ptr<cppspline::Curve> curve(new cppspline::BSpline());
 
     curve->set_steps(necessarySteps);
 
