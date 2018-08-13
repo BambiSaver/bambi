@@ -41,11 +41,15 @@ public:
 
 private:
     void cb_trigger_trajectory_generation(const bambi_msgs::PathWithConstraints& pathWithConstraints);
-
+    void generateTrajectory();
     ros::NodeHandle m_nodeHandle;
     ros::Publisher  m_publisherTrajectory;
     ros::Subscriber m_subscriberTriggerTrajectoryGeneration;
     std::vector<point_xy_t> m_path_xy;
+    float m_maxAcc;
+    float m_maxVel;
+    float m_setPointRate;
+    std::vector<point_xy_t> m_positionTrajectory;
 };
 }
 }

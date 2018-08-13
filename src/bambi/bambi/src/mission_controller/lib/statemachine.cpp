@@ -117,16 +117,11 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
         // 8x8m
         fieldWithInfo.thermal_camera_ground_footprint_height = 8.0f;
         fieldWithInfo.thermal_camera_ground_footprint_width = 8.0f;
-<<<<<<< HEAD
-        fieldWithInfo.home_position.latitude = 46.453066;
-        fieldWithInfo.home_position.longitude = 11.492082;
-=======
         fieldWithInfo.home_position.latitude = 46.452895;
         fieldWithInfo.home_position.longitude = 11.490920;
         fieldWithInfo.current_position.geopos_2d.latitude = 46.453066;
         fieldWithInfo.current_position.geopos_2d.longitude = 11.492082;
         fieldWithInfo.current_position.altitude_over_ground_in_mm = 70000;
->>>>>>> 91041263306f7a9a3eb4e595a64c6dfa1a1d3707
         changeState(State::COVERAGE_PATH_PLANNING);
         m_publisher.triggerPathGeneration(fieldWithInfo);
         return;

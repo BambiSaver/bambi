@@ -25,6 +25,7 @@
 #include "lib/trajectorygeneratornode.h"
 
 
+
 using namespace bambi::trajectory_generator;
 int main(int argc, char **argv)
 {

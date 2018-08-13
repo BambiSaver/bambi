@@ -41,11 +41,8 @@
 
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/PoseStamped.h>
-<<<<<<< HEAD
-=======
 
 #include "../lib/spline/spline/src/main/cpp/BSpline.h"
->>>>>>> 91041263306f7a9a3eb4e595a64c6dfa1a1d3707
 
 
 using namespace bambi::coverage_path_planner;
@@ -104,15 +101,6 @@ std::pair<int, int> getIndexOfMatrixByPoint(double _N, double _E, double start_N
     return t;
 }
 
-<<<<<<< HEAD
-void checkIfToPutNextStep(boost::multi_array<int, 2>& matrix, int i, int j, int currentStep) {
-    if (matrix[i][j] == -1) {
-        // not initialized
-        matrix[i][j] = currentStep + 1;
-    } else if (matrix[i][j] > 0) {
-        // do nothing, because we passed already here, probably in a quicker way
-    }
-=======
 bool checkIfToPutNextStep(boost::multi_array<int, 2>& matrix, int i, int j, int currentStep) {
     if (matrix[i][j] == -1) {
         // not initialized
@@ -122,7 +110,6 @@ bool checkIfToPutNextStep(boost::multi_array<int, 2>& matrix, int i, int j, int 
         // do nothing, because we passed already here, probably in a quicker way
     }*/
     return false;
->>>>>>> 91041263306f7a9a3eb4e595a64c6dfa1a1d3707
 }
 
 
@@ -262,11 +249,7 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
     boost::multi_array<int, 2> matrix(boost::extents[n_N+2][n_E+2]);
     //boost::shared_ptr<map_t> map(new map_t());
 
-<<<<<<< HEAD
-    // make field larger to put in matrix -2 on the borders for easier algorithm later
-=======
     // make field larger to put in matrix (-2) on the borders for easier algorithm later
->>>>>>> 91041263306f7a9a3eb4e595a64c6dfa1a1d3707
     bottomBorder_N -= minDimFootprint;
     leftBorder_E -= minDimFootprint;
 
@@ -304,68 +287,6 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
 
 
 
-<<<<<<< HEAD
-    geographic_msgs::GeoPoint homePositionGeo = geodesy::toMsg(fieldCoverageInfo.home_position.latitude, fieldCoverageInfo.home_position.longitude);
-
-    geodesy::UTMPoint homePositionUTM(homePositionGeo);
-    auto index = getIndexOfMatrixByPoint(homePositionUTM.northing, homePositionUTM.easting, bottomBorder_N, leftBorder_E, minDimFootprint);
-
-    matrix[index.first][index.second] = 0;
-
-    int current_step = 0;
-    bool something_inserted = true;
-
-    while (something_inserted) {
-        something_inserted = false;
-
-        for (int i = 1; i <= n_N; ++i) {
-            for (int j = 1; j <= n_E; ++j) {
-                if (matrix[i][j] == current_step) {
-                    checkIfToPutNextStep(matrix, i, j+1, current_step);
-                    checkIfToPutNextStep(matrix, i+1, j, current_step);
-                    checkIfToPutNextStep(matrix, i, j-1, current_step);
-                    checkIfToPutNextStep(matrix, i-1, j, current_step);
-
-                    checkIfToPutNextStep(matrix, i+1, j+1, current_step);
-                    checkIfToPutNextStep(matrix, i+1, j-1, current_step);
-                    checkIfToPutNextStep(matrix, i-1, j-1, current_step);
-                    checkIfToPutNextStep(matrix, i-1, j+1, current_step);
-                    something_inserted = true;
-                }
-            }
-        }
-        ++current_step;
-    }
-
-
-    printMatrix(matrix, n_N, n_E);
-
-    ROS_INFO("CHOOSING START POINT");
-
-    int max = 0;
-
-    // TODO stupid find element() --> getIndex() ?
-
-    std::pair<int, int> myChosenStartPoint(-1, -1);
-
-    for (int i = 1; i <= n_N; ++i) {
-        for (int j = 1; j <= n_E; ++j) {
-            if (matrix[i][j] > max) {
-                max = matrix[i][j];
-                myChosenStartPoint.first = i;
-                myChosenStartPoint.second = j;
-            } else if (matrix[i][j] == max){
-                short numSameValuedNeighborFieldsOfMyChoice = sameValuedNeighborFields(matrix, myChosenStartPoint.first, myChosenStartPoint.second);
-                short numSameValuedNeighborFieldsOfCurrent = sameValuedNeighborFields(matrix, i, j);
-
-                if (numSameValuedNeighborFieldsOfCurrent < numSameValuedNeighborFieldsOfMyChoice) {
-                    // less same values, is better
-                    myChosenStartPoint.first = i;
-                    myChosenStartPoint.second = j;
-                }
-            }
-        }
-=======
     geographic_msgs::GeoPoint currentPosition = geodesy::toMsg(fieldCoverageInfo.current_position.geopos_2d.latitude, fieldCoverageInfo.current_position.geopos_2d.longitude);
     geodesy::UTMPoint currentPositionUTM(currentPosition);
 
@@ -441,7 +362,6 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
 
         checkedAlready.insert(current);
         cellQueue.pop();
->>>>>>> 91041263306f7a9a3eb4e595a64c6dfa1a1d3707
     }
 
     ROS_INFO("START POINT = (%d, %d)", myChosenStartPoint.first, myChosenStartPoint.second);
@@ -454,11 +374,8 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
     bambi_msgs::Path varForPublishingBambi;
     nav_msgs::Path varForPublishingRos;
 
-<<<<<<< HEAD
-=======
     std::deque<geodesy::UTMPoint> trivialPointQueue;
 
->>>>>>> 91041263306f7a9a3eb4e595a64c6dfa1a1d3707
     while (!reachedEnd) {
         // assume reaching end
         reachedEnd = true;
@@ -476,16 +393,11 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
                 if (matrix[i][j] >= 0) {
                     reachedEnd = false;
 
-<<<<<<< HEAD
-                    // the higher the better
-                    int priority = matrix[i][j]*10 + (8 - sameValuedNeighborFields(matrix, i, j));
-=======
                     bool isDiagnoalField = ((i-currentPos.first) == (j -currentPos.second))
                                             || ((i-currentPos.first) == -(j -currentPos.second));
 
                     // the higher the better
                     int priority = matrix[i][j]*100 + (8 - sameValuedNeighborFields(matrix, i, j)) * 10 + (1- isDiagnoalField);
->>>>>>> 91041263306f7a9a3eb4e595a64c6dfa1a1d3707
                     if (priority > bestPriority) {
                         bestPriority = priority;
                         bestChoice.first = i;
@@ -499,36 +411,9 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
             // I've been here
             matrix[currentPos.first][currentPos.second] = -3;
 
-<<<<<<< HEAD
-
-            auto utmPoint = getUTMCenterPointFromCellIndex(bottomBorder_N, leftBorder_E, currentPos, minDimFootprint, bottomLeft);
-
-            geographic_msgs::GeoPoint geoPoint = geodesy::toMsg(utmPoint);
-
-
-            // save for publishers
-            bambi_msgs::GeoPositionWithRelativeAltitude bambiPoint;
-            // use only scanning altitude for now TODO
-            bambiPoint.altitude_over_ground_in_mm = fieldCoverageInfo.relative_altitude_scanning_in_mm;
-            bambiPoint.geopos_2d.latitude = geoPoint.latitude;
-            bambiPoint.geopos_2d.longitude = geoPoint.longitude;
-
-            geometry_msgs::PoseStamped poseStamped;
-            poseStamped.pose.position.x = utmPoint.easting - leftBorder_E;
-            poseStamped.pose.position.y = utmPoint.northing - topBorder_N;
-            poseStamped.pose.position.z = fieldCoverageInfo.relative_altitude_scanning_in_mm / 1E3;
-            // TODO fix in rviz
-            poseStamped.header.frame_id = "/map";
-
-            varForPublishingBambi.geometric_path.push_back(bambiPoint);
-            varForPublishingRos.poses.push_back(poseStamped);
-
-=======
             auto utmPoint = getUTMCenterPointFromCellIndex(bottomBorder_N, leftBorder_E, currentPos, minDimFootprint, bottomLeft);
             // direction which ends at currentPosition
             trivialPointQueue.push_back(utmPoint);
->>>>>>> 91041263306f7a9a3eb4e595a64c6dfa1a1d3707
-
             directionMatrix[currentPos.first][currentPos.second] = getDirection(currentPos, bestChoice);
 
             if (myChosenStartPoint == currentPos)
@@ -542,10 +427,6 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
     directionMatrix[currentPos.first][currentPos.second] = directionMatrix[currentPos.first][currentPos.second]  = std::string("#") + directionMatrix[currentPos.first][currentPos.second] + std::string("#");
 
     printDirectionMatrix(directionMatrix, n_N, n_E);
-
-<<<<<<< HEAD
-=======
-
 
 
     //************************ COVERAGE FINISHED --> INTERPOLATING NOW *************************/
@@ -669,7 +550,6 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
              static_cast<int>(varForPublishingBambi.geometric_path.size()),
              static_cast<int>(varForPublishingRos.poses.size()));
 
->>>>>>> 91041263306f7a9a3eb4e595a64c6dfa1a1d3707
     m_publisherBambiPath.publish(varForPublishingBambi);
     m_publisherRosNavPath.publish(varForPublishingRos);
 }
