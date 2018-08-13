@@ -101,13 +101,15 @@ std::pair<int, int> getIndexOfMatrixByPoint(double _N, double _E, double start_N
     return t;
 }
 
-void checkIfToPutNextStep(boost::multi_array<int, 2>& matrix, int i, int j, int currentStep) {
+bool checkIfToPutNextStep(boost::multi_array<int, 2>& matrix, int i, int j, int currentStep) {
     if (matrix[i][j] == -1) {
         // not initialized
         matrix[i][j] = currentStep + 1;
-    } else if (matrix[i][j] > 0) {
+        return true;
+    }/* else if (matrix[i][j] > 0) {
         // do nothing, because we passed already here, probably in a quicker way
-    }
+    }*/
+    return false;
 }
 
 
@@ -247,7 +249,7 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
     boost::multi_array<int, 2> matrix(boost::extents[n_N+2][n_E+2]);
     //boost::shared_ptr<map_t> map(new map_t());
 
-    // make field larger to put in matrix -2 on the borders for easier algorithm later
+    // make field larger to put in matrix (-2) on the borders for easier algorithm later
     bottomBorder_N -= minDimFootprint;
     leftBorder_E -= minDimFootprint;
 
@@ -293,62 +295,73 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
 
     auto index = getIndexOfMatrixByPoint(currentPositionUTM.northing, currentPositionUTM.easting, bottomBorder_N, leftBorder_E, minDimFootprint);
 
+    std::queue<std::pair<int, int>> cellQueue;
+    cellQueue.push(index);
     matrix[index.first][index.second] = 0;
 
-    int current_step = 0;
-    bool something_inserted = true;
+    std::pair<int,int> lastQueueElement;
 
-    while (something_inserted) {
-        something_inserted = false;
+    ROS_INFO("FILLING MATRIX");
 
-        // TODO keep queue of points to work on (reduce n^2 complexity)
-        for (int i = 1; i <= n_N; ++i) {
-            for (int j = 1; j <= n_E; ++j) {
-                if (matrix[i][j] == current_step) {
-                    checkIfToPutNextStep(matrix, i, j+1, current_step);
-                    checkIfToPutNextStep(matrix, i+1, j, current_step);
-                    checkIfToPutNextStep(matrix, i, j-1, current_step);
-                    checkIfToPutNextStep(matrix, i-1, j, current_step);
+    while (!cellQueue.empty()) {
+        auto current = cellQueue.front();
 
-                    checkIfToPutNextStep(matrix, i+1, j+1, current_step);
-                    checkIfToPutNextStep(matrix, i+1, j-1, current_step);
-                    checkIfToPutNextStep(matrix, i-1, j-1, current_step);
-                    checkIfToPutNextStep(matrix, i-1, j+1, current_step);
-                    something_inserted = true;
+        auto cellValue = matrix[current.first][current.second];
+
+        for (int i = current.first - 1; i <= current.first +1; ++i) {
+            for (int j = current.second - 1; j <= current.second +1; ++j) {
+                if (i == current.first && j == current.second)
+                    // skip same field
+                    continue;
+                if (checkIfToPutNextStep(matrix, i, j, cellValue)) {
+                    cellQueue.push(std::pair<int,int>(i, j));
                 }
             }
         }
-        ++current_step;
+        lastQueueElement = current;
+        cellQueue.pop();
     }
-
 
     printMatrix(matrix, n_N, n_E);
 
+    // look for starting position
+    // starting from last queue element
+
+    cellQueue.push(lastQueueElement);
+    short lowestSameValuedNeighborFieldsNumber = 8;
     ROS_INFO("CHOOSING START POINT");
+    auto myChosenStartPoint = lastQueueElement;
 
-    int max = 0;
+    std::set<std::pair<int, int>> checkedAlready;
 
-    // TODO stupid find element() --> getIndex() ?
+    while (!cellQueue.empty()) {
+        auto current = cellQueue.front();
 
-    std::pair<int, int> myChosenStartPoint(-1, -1);
+        for (int i = current.first - 1; i <= current.first +1; ++i) {
+            for (int j = current.second - 1; j <= current.second +1; ++j) {
+                if (i == current.first && j == current.second)
+                    // skip same field
+                    continue;
 
-    for (int i = 1; i <= n_N; ++i) {
-        for (int j = 1; j <= n_E; ++j) {
-            if (matrix[i][j] > max) {
-                max = matrix[i][j];
-                myChosenStartPoint.first = i;
-                myChosenStartPoint.second = j;
-            } else if (matrix[i][j] == max){
-                short numSameValuedNeighborFieldsOfMyChoice = sameValuedNeighborFields(matrix, myChosenStartPoint.first, myChosenStartPoint.second);
-                short numSameValuedNeighborFieldsOfCurrent = sameValuedNeighborFields(matrix, i, j);
+                // consider only not-checked and same-valued fields
+                if (checkedAlready.find(std::pair<int,int>(i, j)) == checkedAlready.end() &&
+                        matrix[i][j] == matrix[current.first][current.second]) {
+                    cellQueue.push(std::pair<int,int>(i, j));
+                    short numSameValuedNeighborFieldsOfCurrent = sameValuedNeighborFields(matrix, i, j);
 
-                if (numSameValuedNeighborFieldsOfCurrent < numSameValuedNeighborFieldsOfMyChoice) {
-                    // less same values, is better
-                    myChosenStartPoint.first = i;
-                    myChosenStartPoint.second = j;
+                    if (numSameValuedNeighborFieldsOfCurrent < lowestSameValuedNeighborFieldsNumber) {
+                        myChosenStartPoint.first = i;
+                        myChosenStartPoint.second = j;
+                        lowestSameValuedNeighborFieldsNumber = numSameValuedNeighborFieldsOfCurrent;
+                    }
                 }
+
+
             }
         }
+
+        checkedAlready.insert(current);
+        cellQueue.pop();
     }
 
     ROS_INFO("START POINT = (%d, %d)", myChosenStartPoint.first, myChosenStartPoint.second);

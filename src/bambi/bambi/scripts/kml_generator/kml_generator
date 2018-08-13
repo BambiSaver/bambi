@@ -31,7 +31,6 @@ class KmlGeneratorNode():
 
 
     def cb_path(self, Path):
-        rospy.loginfo("Path received, generating KML")
 
         coordinateString = ""
 
@@ -65,8 +64,12 @@ class KmlGeneratorNode():
           )
         #print etree.tostring(doc, pretty_print=True)
 
+        fileName = '/home/flo/cloud/bambi/path-output-' + datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S') + '.kml'
+
+        rospy.loginfo("Path received, generating KML markup and writing into " + fileName)
+
         # output a KML file
-        outfile = file('/home/flo/cloud/bambi/path-output-' + datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S') + '.kml','w')
+        outfile = file(fileName,'w')
         outfile.write(etree.tostring(doc, pretty_print=True))
 
 
