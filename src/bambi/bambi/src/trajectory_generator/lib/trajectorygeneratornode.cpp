@@ -113,20 +113,28 @@ void TrajectoryGeneratorNode::generateTrajectory()
             //N= number of generated setpoint in the current segment
             N = std::lround(m_setPointRate* dist/(m_maxVel * safeVelFactor) );
 
-            if (j >= pathXYSize){
+            if (j >= pathXYSize - 1){
                 lastElementReached = true;
             }
         //if we have no setpoint in the current segment we compute the distance to the next provided point
         }while(N <= 0 && !lastElementReached);
 
-
-        for (size_t k = 0; k < N; ++k){
-            //if we want N setpoint we must divide the segment in N-1 parts
-            double t = k/(N-1);
+        if ( N==1 ){
+            //if we have only one setpoint for the current segment we send the last poit of the segment
             point_xy_t newSPoint;
-            newSPoint.set<0>(m_path_xy[i].get<0>() * (1-t) + m_path_xy[j].get<0>() * t);
-            newSPoint.set<1>(m_path_xy[i].get<1>() * (1-t) + m_path_xy[j].get<1>() * t);
+            newSPoint.set<0>(m_path_xy[j].get<0>());
+            newSPoint.set<1>(m_path_xy[j].get<1>());
             trajectoryXY.push_back(newSPoint);
+        }else{
+            for (size_t k = 0; k < N; ++k){
+                //if we want N setpoint we must divide the segment in N-1 parts
+                double t = k/(N-1);
+                point_xy_t newSPoint;
+                newSPoint.set<0>(m_path_xy[i].get<0>() * (1-t) + m_path_xy[j].get<0>() * t);
+                newSPoint.set<1>(m_path_xy[i].get<1>() * (1-t) + m_path_xy[j].get<1>() * t);
+                trajectoryXY.push_back(newSPoint);
+            }
+
         }
 
         ++i;

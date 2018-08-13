@@ -1,2 +1,2 @@
-uint16 sample_rate
+float32 sample_rate
 mavros_msgs/GlobalPositionTarget[] setpoints

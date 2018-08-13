@@ -32,7 +32,7 @@
 #include <mavros_msgs/SetMode.h>
 using namespace bambi::missioncontroller;
 
-//#define PATH_GENERATOR_DEV_SETUP
+#define PATH_GENERATOR_DEV_SETUP
 
 
 StateMachine::StateMachine(const MCPublisher &publisher, rosTimerProviderFunction armTimerProvider) :

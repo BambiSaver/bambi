@@ -14,7 +14,7 @@
   <node name="trajectory_generator" ns="bambi" pkg="bambi" type="trajectory_generator"/>
 
   <!-- Run flight_controller node under "bambi" namespace -->
-  <node name="flight_controller" ns="bambi" pkg="bambi" type="flight_controller"/>
+  <node name="flight_controller" output="screen" ns="bambi" pkg="bambi" type="flight_controller"/>
 
   <!-- Run missioncontroller node under "bambi" namespace -->
   <node name="mission_controller" output="screen" ns="bambi" pkg="bambi" type="mission_controller"/>
