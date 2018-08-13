@@ -27,7 +27,7 @@
 #include <ros/ros.h>
 #include "bambi_msgs/PathWithConstraints.h"
 #include <boost/geometry/geometries/point_xy.hpp>
-
+#include <geographic_msgs/GeoPoint.h>
 typedef boost::geometry::model::d2::point_xy<double> point_xy_t;
 
 namespace bambi {
@@ -42,6 +42,7 @@ public:
 private:
     void cb_trigger_trajectory_generation(const bambi_msgs::PathWithConstraints& pathWithConstraints);
     void generateTrajectory();
+    void convertTrajectoryXYToGeoPoint(uint8_t zone, char band);
     ros::NodeHandle m_nodeHandle;
     ros::Publisher  m_publisherTrajectory;
     ros::Subscriber m_subscriberTriggerTrajectoryGeneration;
@@ -49,7 +50,8 @@ private:
     float m_maxAcc;
     float m_maxVel;
     float m_setPointRate;
-    std::vector<point_xy_t> m_positionTrajectory;
+    std::vector<point_xy_t> m_positionTrajectoryXY;
+    std::vector<geographic_msgs::GeoPoint> m_positionTrajectoryGeo;
 };
 }
 }

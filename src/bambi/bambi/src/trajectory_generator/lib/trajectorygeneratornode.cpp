@@ -23,7 +23,7 @@
  */
 #include "trajectorygeneratornode.h"
 #include "bambi_msgs/Trajectory.h"
-
+#include "mavros_msgs/GlobalPositionTarget.h"
 #include <geodesy/utm.h>
 #include <boost/geometry/algorithms/distance.hpp>
 
@@ -40,6 +40,7 @@ TrajectoryGeneratorNode::TrajectoryGeneratorNode(const ros::NodeHandle& nodeHand
     m_publisherTrajectory = m_nodeHandle.advertise<bambi_msgs::Trajectory>("trajectory", 5, false);
 
     m_subscriberTriggerTrajectoryGeneration = m_nodeHandle.subscribe("/bambi/mission_controller/trigger_trajectory_generation", 10, &TrajectoryGeneratorNode::cb_trigger_trajectory_generation, this);
+    m_setPointRate = 40.0f;
 }
 
 void TrajectoryGeneratorNode::spin()
@@ -49,6 +50,14 @@ void TrajectoryGeneratorNode::spin()
 
 void TrajectoryGeneratorNode::cb_trigger_trajectory_generation(const bambi_msgs::PathWithConstraints &pathWithConstraints)
 {
+    //required to save zone and band
+    // We use the path starting point to gather these information
+    auto p= pathWithConstraints.path.geometric_path[0].geopos_2d;
+
+    geographic_msgs::GeoPoint geoP = geodesy::toMsg(p.latitude, p.longitude);
+    geodesy::UTMPoint utmP(geoP);
+
+
     for(auto Point : pathWithConstraints.path.geometric_path){
 
         geographic_msgs::GeoPoint geoPoint = geodesy::toMsg(Point.geopos_2d.latitude, Point.geopos_2d.longitude);
@@ -58,6 +67,30 @@ void TrajectoryGeneratorNode::cb_trigger_trajectory_generation(const bambi_msgs:
     }
     m_maxAcc = pathWithConstraints.flight_constraints.max_acceleration;
     m_maxVel = pathWithConstraints.flight_constraints.max_velocity;
+
+    generateTrajectory();
+
+    convertTrajectoryXYToGeoPoint(utmP.zone, utmP.band);
+    bambi_msgs::Trajectory bambiTrajectory;
+    bambiTrajectory.sample_rate = m_setPointRate;
+
+
+    //TODO compute derivative for velocity setpoint
+    for (auto geoPoint : m_positionTrajectoryGeo) {
+        mavros_msgs::GlobalPositionTarget globalPositionTarget;
+        globalPositionTarget.coordinate_frame = mavros_msgs::GlobalPositionTarget::FRAME_GLOBAL_TERRAIN_ALT;
+        globalPositionTarget.latitude = geoP.latitude;
+        globalPositionTarget.longitude = geoP.longitude;
+
+        //TODO get rel altitude from terrain from message
+        globalPositionTarget.altitude = 10.0f;
+        globalPositionTarget.type_mask = mavros_msgs::GlobalPositionTarget::IGNORE_VX |
+                mavros_msgs::GlobalPositionTarget::IGNORE_VY | mavros_msgs::GlobalPositionTarget::IGNORE_VZ;
+
+        bambiTrajectory.setpoints.push_back(globalPositionTarget);
+    }
+
+    m_publisherTrajectory.publish(bambiTrajectory);
 
     ROS_INFO("Trajectory generator got path with constraints messages");
 }
@@ -104,5 +137,19 @@ void TrajectoryGeneratorNode::generateTrajectory()
     }
 
 
-    m_positionTrajectory = trajectoryXY;
+    m_positionTrajectoryXY = trajectoryXY;
 }
+
+void TrajectoryGeneratorNode::convertTrajectoryXYToGeoPoint(uint8_t zone, char band)
+{
+
+    geographic_msgs::GeoPoint geoPoint;
+    for (auto pointXY : m_positionTrajectoryXY){
+        geodesy::UTMPoint utmPoint(pointXY.get<0>(),pointXY.get<1>(),zone, band);
+        geoPoint = geodesy::toMsg(utmPoint);
+        m_positionTrajectoryGeo.push_back(geoPoint);
+    }
+
+
+}
+
