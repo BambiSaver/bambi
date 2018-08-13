@@ -42,6 +42,8 @@
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/PoseStamped.h>
 
+#include "../lib/spline/spline/src/main/cpp/CatmullRom.h"
+
 
 using namespace bambi::coverage_path_planner;
 
@@ -283,10 +285,13 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
 
 
 
-    geographic_msgs::GeoPoint homePositionGeo = geodesy::toMsg(fieldCoverageInfo.home_position.latitude, fieldCoverageInfo.home_position.longitude);
+    geographic_msgs::GeoPoint currentPosition = geodesy::toMsg(fieldCoverageInfo.current_position.geopos_2d.latitude, fieldCoverageInfo.current_position.geopos_2d.longitude);
+    geodesy::UTMPoint currentPositionUTM(currentPosition);
 
-    geodesy::UTMPoint homePositionUTM(homePositionGeo);
-    auto index = getIndexOfMatrixByPoint(homePositionUTM.northing, homePositionUTM.easting, bottomBorder_N, leftBorder_E, minDimFootprint);
+    // TODO: We assume that current position is part of the field. --> may NOT be the case (?)
+    // SOLUTION: check if the neighborfields are accessable (=-1) and not =(-2), and if not, choose a random accessable position to start
+
+    auto index = getIndexOfMatrixByPoint(currentPositionUTM.northing, currentPositionUTM.easting, bottomBorder_N, leftBorder_E, minDimFootprint);
 
     matrix[index.first][index.second] = 0;
 
@@ -296,6 +301,7 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
     while (something_inserted) {
         something_inserted = false;
 
+        // TODO keep queue of points to work on (reduce n^2 complexity)
         for (int i = 1; i <= n_N; ++i) {
             for (int j = 1; j <= n_E; ++j) {
                 if (matrix[i][j] == current_step) {
@@ -355,6 +361,8 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
     bambi_msgs::Path varForPublishingBambi;
     nav_msgs::Path varForPublishingRos;
 
+    std::deque<geodesy::UTMPoint> trivialPointQueue;
+
     while (!reachedEnd) {
         // assume reaching end
         reachedEnd = true;
@@ -387,29 +395,9 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
             // I've been here
             matrix[currentPos.first][currentPos.second] = -3;
 
-
             auto utmPoint = getUTMCenterPointFromCellIndex(bottomBorder_N, leftBorder_E, currentPos, minDimFootprint, bottomLeft);
-
-            geographic_msgs::GeoPoint geoPoint = geodesy::toMsg(utmPoint);
-
-
-            // save for publishers
-            bambi_msgs::GeoPositionWithRelativeAltitude bambiPoint;
-            // use only scanning altitude for now TODO
-            bambiPoint.altitude_over_ground_in_mm = fieldCoverageInfo.relative_altitude_scanning_in_mm;
-            bambiPoint.geopos_2d.latitude = geoPoint.latitude;
-            bambiPoint.geopos_2d.longitude = geoPoint.longitude;
-
-            geometry_msgs::PoseStamped poseStamped;
-            poseStamped.pose.position.x = utmPoint.easting - leftBorder_E;
-            poseStamped.pose.position.y = utmPoint.northing - topBorder_N;
-            poseStamped.pose.position.z = fieldCoverageInfo.relative_altitude_scanning_in_mm / 1E3;
-            // TODO fix in rviz
-            poseStamped.header.frame_id = "/map";
-
-            varForPublishingBambi.geometric_path.push_back(bambiPoint);
-            varForPublishingRos.poses.push_back(poseStamped);
-
+            // direction which ends at currentPosition
+            trivialPointQueue.push_back(utmPoint);
 
             directionMatrix[currentPos.first][currentPos.second] = getDirection(currentPos, bestChoice);
 
@@ -424,6 +412,130 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
     directionMatrix[currentPos.first][currentPos.second] = directionMatrix[currentPos.first][currentPos.second]  = std::string("#") + directionMatrix[currentPos.first][currentPos.second] + std::string("#");
 
     printDirectionMatrix(directionMatrix, n_N, n_E);
+
+
+
+
+    //************************ COVERAGE FINISHED --> INTERPOLATING NOW *************************/
+
+
+//    trivialPointQueue.push_front(currentPositionUTM);
+    geographic_msgs::GeoPoint homePosition = geodesy::toMsg(fieldCoverageInfo.home_position.latitude, fieldCoverageInfo.home_position.longitude);
+    geodesy::UTMPoint homePositionUTM(homePosition);
+
+//    trivialPointQueue.push_back(homePositionUTM);
+
+    std::vector<cppspline::Vector> xyzPath;
+    xyzPath.reserve(trivialPointQueue.size() + 2);
+
+
+
+    // use x y z like EAST, NORTH, UP (not NED)
+    auto currentPosVec = cppspline::Vector(currentPositionUTM.easting,
+                                           currentPositionUTM.northing,
+                                           fieldCoverageInfo.current_position.altitude_over_ground_in_mm / 10E3 /* over 1000 to get all in METERS */
+                                           );
+
+
+    // currentPos 4 times to start from here (?)
+    xyzPath.push_back(currentPosVec);
+    xyzPath.push_back(currentPosVec);
+    xyzPath.push_back(currentPosVec);
+    xyzPath.push_back(currentPosVec);
+
+    // generate x y z
+    for (auto p : trivialPointQueue) {
+        xyzPath.push_back(cppspline::Vector(p.easting,
+                                            p.northing,
+                                            fieldCoverageInfo.relative_altitude_scanning_in_mm / 10E3 /* over 1000 to get all in METERS */
+                                            ));
+    }
+
+
+    // use the last point to get back to home flight altitude
+
+    auto lastPosVec = cppspline::Vector(xyzPath.back().x,
+                                        xyzPath.back().y,
+                                        fieldCoverageInfo.relative_altitude_returning_in_mm / 10E3 /* over 1000 to get all in METERS */
+                                        );
+
+    auto homePosVec = cppspline::Vector(homePositionUTM.easting,
+                                        homePositionUTM.northing,
+                                        fieldCoverageInfo.relative_altitude_returning_in_mm / 10E3 /* over 1000 to get all in METERS */
+                                        );
+
+    xyzPath.push_back(lastPosVec);
+    xyzPath.push_back(lastPosVec);
+    // 4 times to get home (?)
+    xyzPath.push_back(homePosVec);
+    xyzPath.push_back(homePosVec);
+    xyzPath.push_back(homePosVec);
+    xyzPath.push_back(homePosVec);
+
+
+    double pathLength = 0.0;
+    for (auto it = xyzPath.cbegin() + 1; it != xyzPath.cend(); ++it) {
+        pathLength += ((*it) - (*(it-1))).length();
+    }
+
+    // set required resolution
+    static const double resolutionInMeters = 0.5;
+    // limit to 100 steps
+    int necessarySteps = std::min(static_cast<int>(std::ceil(pathLength / resolutionInMeters)), 100);
+
+    ROS_INFO("With a resolution of %.2fm for the whole path with a length of %.2fm we need %i intermediate steps",
+             resolutionInMeters, pathLength, necessarySteps);
+
+    boost::shared_ptr<cppspline::Curve> curve(new cppspline::CatmullRom());
+
+    curve->set_steps(necessarySteps);
+
+    for (auto v : xyzPath) {
+        curve->add_way_point(v);
+    }
+
+
+    //curve->
+
+
+//    std::cout << "nodes: " << curve->node_count() << std::endl;
+//    std::cout << "total length: " << curve->total_length() << std::endl;
+//    for (int i = 0; i < curve->node_count(); ++i) {
+//        std::cout << "node #" << i << ": " << curve->node(i).toString() << " (length so far: " << curve->length_from_starting_point(i) << ")" << std::endl;
+//    }
+
+
+    ROS_INFO("From a path with %d points, though CatmullRom we got an interpolation with %d points",
+             static_cast<int>(xyzPath.size()), curve->node_count());
+
+
+
+    for (int i = 0; i < curve->node_count(); ++i) {
+        const cppspline::Vector& v = curve->node(i);
+        geodesy::UTMPoint p(v.x, v.y, bottomLeft.zone, bottomLeft.band);
+        geographic_msgs::GeoPoint geoPoint = geodesy::toMsg(p);
+
+        // save for publishers
+        bambi_msgs::GeoPositionWithRelativeAltitude bambiPoint;
+        // use only scanning altitude for now TODO
+        bambiPoint.altitude_over_ground_in_mm = std::round(v.z * 10E3);
+        bambiPoint.geopos_2d.latitude = geoPoint.latitude;
+        bambiPoint.geopos_2d.longitude = geoPoint.longitude;
+
+        geometry_msgs::PoseStamped poseStamped;
+        poseStamped.pose.position.x = p.easting - leftBorder_E;
+        poseStamped.pose.position.y = p.northing - topBorder_N;
+        poseStamped.pose.position.z = v.z * 10E3;
+        // TODO fix in rviz
+        poseStamped.header.frame_id = "/map";
+
+        varForPublishingBambi.geometric_path.push_back(bambiPoint);
+        varForPublishingRos.poses.push_back(poseStamped);
+    }
+
+    ROS_INFO("Publishing BAMBI and RVIZ Paths with %d and %d points",
+             static_cast<int>(varForPublishingBambi.geometric_path.size()),
+             static_cast<int>(varForPublishingRos.poses.size()));
 
     m_publisherBambiPath.publish(varForPublishingBambi);
     m_publisherRosNavPath.publish(varForPublishingRos);

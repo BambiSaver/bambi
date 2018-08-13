@@ -39,6 +39,11 @@ add_library(${PROJECT_NAME}
    src/mission_controller/lib/mcpublisher.cpp
    src/flight_controller/lib/flightcontrollernode.cpp
    src/coverage_path_planner/lib/coveragepathplannernode.cpp
+   src/coverage_path_planner/lib/spline/spline/src/main/cpp/Bezier.cpp
+   src/coverage_path_planner/lib/spline/spline/src/main/cpp/BSpline.cpp
+   src/coverage_path_planner/lib/spline/spline/src/main/cpp/CatmullRom.cpp
+   src/coverage_path_planner/lib/spline/spline/src/main/cpp/Curve.cpp
+   src/coverage_path_planner/lib/spline/spline/src/main/cpp/Vector.cpp
    src/trajectory_generator/lib/trajectorygeneratornode.cpp
 )
 
@@ -78,6 +83,7 @@ target_link_libraries(${PROJECT_NAME}_flight_controller ${PROJECT_NAME} ${catkin
 install(PROGRAMS
    scripts/optical_cam/optical_cam
    scripts/boundary_generator/boundary_generator
+   scripts/kml_generator/kml_generator
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

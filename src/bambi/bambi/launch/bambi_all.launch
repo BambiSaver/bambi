@@ -1,33 +1,16 @@
 <launch>
-
-<!-- Run optical_cam node under "bambi" namespace -->
-       <node pkg="bambi" type="optical_cam" name="optical_cam" ns="bambi">
-         </node>
-
-
-<!-- Run boundary_generator node under "bambi" namespace -->
-       <node pkg="bambi" type="boundary_generator" name="boundary_generator" ns="bambi">
-         </node>
-
-
-<!-- Run coverage_path_planner node under "bambi" namespace -->
-       <node pkg="bambi" type="coverage_path_planner" name="coverage_path_planner" ns="bambi">
-         </node>
-
-<!-- Run trajectory_generator node under "bambi" namespace -->
-       <node pkg="bambi" type="trajectory_generator" name="trajectory_generator" ns="bambi">
-         </node>
-
-<!-- Run flight_controller node under "bambi" namespace -->
-       <node pkg="bambi" type="flight_controller" name="flight_controller" ns="bambi">
-         </node>
-
-<!-- Run missioncontroller node under "bambi" namespace -->
-       <node pkg="bambi" type="mission_controller" name="mission_controller" ns="bambi">
-         </node>
-
-
-
-<!--<param name="port" value="$(arg port)" />-->
-
+  <!-- Run optical_cam node under "bambi" namespace -->
+  <node name="optical_cam" ns="bambi" pkg="bambi" type="optical_cam"/>
+  <!-- Run boundary_generator node under "bambi" namespace -->
+  <node name="boundary_generator" ns="bambi" pkg="bambi" type="boundary_generator"/>
+  <node name="kml_generator" ns="bambi" pkg="bambi" type="kml_generator"/>
+  <!-- Run coverage_path_planner node under "bambi" namespace -->
+  <node name="coverage_path_planner" ns="bambi" pkg="bambi" type="coverage_path_planner"/>
+  <!-- Run trajectory_generator node under "bambi" namespace -->
+  <node name="trajectory_generator" ns="bambi" pkg="bambi" type="trajectory_generator"/>
+  <!-- Run flight_controller node under "bambi" namespace -->
+  <node name="flight_controller" ns="bambi" pkg="bambi" type="flight_controller"/>
+  <!-- Run missioncontroller node under "bambi" namespace -->
+  <node name="mission_controller" ns="bambi" pkg="bambi" type="mission_controller"/>
+  <!--<param name="port" value="$(arg port)" />-->
 </launch>
