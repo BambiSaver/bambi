@@ -31,12 +31,12 @@
 #include <mavros_msgs/HomePosition.h>
 #include <mavros_msgs/PositionTarget.h>
 
-//Inizio il rebase del codice domani
-//typedef struct PointXYAlt {
-//    double x;
-//    double y;
-//    uint32_t Alt;
-//} PointXYAlt;
+
+typedef struct PointXYZ_relAltitude {
+    double x;
+    double y;
+    uint32_t alt;
+} PointXYZ_relAltitude;
 
 typedef boost::geometry::model::d2::point_xy<double> point_xy_t;
 
@@ -55,6 +55,7 @@ private:
     void generateTrajectory();
     void convertTrajectoryXYToGeoPoint(uint8_t zone, char band);
     void transformTrajectoryToLocalENU();
+    double dist2D(const PointXYZ_relAltitude& p1,const PointXYZ_relAltitude& p2);
     ros::NodeHandle m_nodeHandle;
     ros::Publisher  m_publisherTrajectory;
     ros::Subscriber m_subscriberTriggerTrajectoryGeneration;
@@ -65,6 +66,8 @@ private:
 
     mavros_msgs::HomePosition m_homePosition;
     bool m_homePositionReceived;
+
+    std::vector<PointXYZ_relAltitude> m_pathXYZ_relAltitude;
 
     std::vector<mavros_msgs::PositionTarget> m_positionTrajectoryENU;
     std::vector<point_xy_t> m_path_xy;

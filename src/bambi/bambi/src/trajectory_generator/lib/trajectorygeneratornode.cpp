@@ -49,132 +49,74 @@ void TrajectoryGeneratorNode::spin()
     ros::spin();
 }
 
+
+
+
+void TrajectoryGeneratorNode::cb_trigger_trajectory_generation(const bambi_msgs::PathWithConstraints &pathWithConstraints){
+    m_maxAcc = pathWithConstraints.flight_constraints.max_acceleration;
+    m_maxVel = pathWithConstraints.flight_constraints.max_velocity;
+
+
+
+    //TODO check to have received at least one home position message
+
+    //Transform home position in UTM to transoform path points in local referance system
+    geographic_msgs::GeoPoint geoHomePoint;
+    geoHomePoint.latitude = m_homePosition.geo.latitude;
+    geoHomePoint.longitude = m_homePosition.geo.longitude;
+    geodesy::UTMPoint utmHomePoint(geoHomePoint);
+
+    for(auto Point : pathWithConstraints.path.geometric_path){
+
+        geographic_msgs::GeoPoint geoPoint = geodesy::toMsg(Point.geopos_2d.latitude, Point.geopos_2d.longitude);
+        geodesy::UTMPoint UTMPoint(geoPoint);
+        PointXYZ_relAltitude pointXYZ_relAlt;
+        pointXYZ_relAlt.x = UTMPoint.easting - utmHomePoint.easting;
+        pointXYZ_relAlt.y = UTMPoint.northing - utmHomePoint.northing;
+        pointXYZ_relAlt.alt = Point.altitude_over_ground;
+        m_pathXYZ_relAltitude.push_back(pointXYZ_relAlt);
+    }
+    generateTrajectory();
+
+    bambi_msgs::Trajectory bambiTrajectory;
+    bambiTrajectory.sample_rate = m_setPointRate;
+    bambiTrajectory.setpoints = m_positionTrajectoryENU;
+
+    m_publisherTrajectory.publish(bambiTrajectory);
+}
+
 void TrajectoryGeneratorNode::cb_update_home_position(const mavros_msgs::HomePosition &homePosition)
 {
     m_homePosition = homePosition;
     m_homePositionReceived = true;
 }
 
-
-void TrajectoryGeneratorNode::cb_trigger_trajectory_generation(const bambi_msgs::PathWithConstraints &pathWithConstraints)
-{
-    //required to save zone and band
-    // We use the path starting point to gather these information
-    auto p= pathWithConstraints.path.geometric_path[0].geopos_2d;
-
-    geographic_msgs::GeoPoint geoP = geodesy::toMsg(p.latitude, p.longitude);
-    geodesy::UTMPoint utmP(geoP);
-
-
-    for(auto Point : pathWithConstraints.path.geometric_path){
-
-        geographic_msgs::GeoPoint geoPoint = geodesy::toMsg(Point.geopos_2d.latitude, Point.geopos_2d.longitude);
-        geodesy::UTMPoint UTMPoint(geoPoint);
-        point_xy_t point_xy(UTMPoint.easting, UTMPoint.northing);
-        m_path_xy.push_back(point_xy);
-    }
-    m_maxAcc = pathWithConstraints.flight_constraints.max_acceleration;
-    m_maxVel = pathWithConstraints.flight_constraints.max_velocity;
-
-    generateTrajectory();
-
-
-    //convertTrajectoryXYToGeoPoint(utmP.zone, utmP.band);
-
-
-    bambi_msgs::Trajectory bambiTrajectory;
-    bambiTrajectory.sample_rate = m_setPointRate;
-
-
-//    //TODO compute derivative for velocity setpoint
-//    for (auto geoPoint : m_positionTrajectoryGeo) {
-//        mavros_msgs::GlobalPositionTarget globalPositionTarget;
-//        globalPositionTarget.coordinate_frame = mavros_msgs::GlobalPositionTarget::FRAME_GLOBAL_REL_ALT;
-//        globalPositionTarget.latitude = geoP.latitude;
-//        globalPositionTarget.longitude = geoP.longitude;
-
-//        //TODO get rel altitude from terrain from message
-//        globalPositionTarget.altitude = 45.0f;
-//        globalPositionTarget.type_mask = mavros_msgs::GlobalPositionTarget::IGNORE_VX |
-//                mavros_msgs::GlobalPositionTarget::IGNORE_VY | mavros_msgs::GlobalPositionTarget::IGNORE_VZ;
-
-
-
-//        // TODO : convert to local pos(!) NOTE: header.stamp set in flightcontroller
-//        mavros_msgs::PositionTarget pos;
-
-//        pos.position.x = 89.0;
-//        pos.position.y = 19.0;
-//        pos.position.z = 45.0;
-//        pos.velocity.x = 0;
-//        pos.velocity.y = 0;
-//        pos.velocity.z = 0;
-//        pos.coordinate_frame = mavros_msgs::PositionTarget::FRAME_LOCAL_NED;
-//        pos.type_mask = mavros_msgs::PositionTarget::IGNORE_AFX |
-//                mavros_msgs::PositionTarget::IGNORE_AFY |
-//                mavros_msgs::PositionTarget::IGNORE_AFZ |
-//                mavros_msgs::PositionTarget::IGNORE_YAW |
-//                mavros_msgs::PositionTarget::IGNORE_YAW_RATE;
-
-
-//        bambiTrajectory.setpoints.push_back(pos);
-//    }
-
-    //check if at least one home position has been received
-    if (m_homePositionReceived){
-        //transform trajectory in local ENU using offset from home_position and add type_mask
-        geographic_msgs::GeoPoint geoHomePoint;
-        geoHomePoint.latitude = m_homePosition.geo.latitude;
-        geoHomePoint.longitude = m_homePosition.geo.longitude;
-        geodesy::UTMPoint utmHomePoint(geoHomePoint);
-
-        mavros_msgs::PositionTarget pos;
-        pos.coordinate_frame = mavros_msgs::PositionTarget::FRAME_LOCAL_NED;
-        pos.type_mask = mavros_msgs::PositionTarget::IGNORE_AFX |
-                mavros_msgs::PositionTarget::IGNORE_AFY |
-                mavros_msgs::PositionTarget::IGNORE_AFZ |
-                mavros_msgs::PositionTarget::IGNORE_YAW |
-                mavros_msgs::PositionTarget::IGNORE_VX  |
-                mavros_msgs::PositionTarget::IGNORE_VY  |
-                mavros_msgs::PositionTarget::IGNORE_VZ  |
-                mavros_msgs::PositionTarget::IGNORE_YAW_RATE;
-
-        for (auto pointXY : m_positionTrajectoryXY){
-           pos.position.x = pointXY.get<0>() - utmHomePoint.easting;
-           pos.position.y = pointXY.get<1>() - utmHomePoint.northing;
-           pos.position.z = 45.0;
-           m_positionTrajectoryENU.push_back(pos);
-        }
-
-    }
-
-    bambiTrajectory.setpoints = m_positionTrajectoryENU;
-    m_publisherTrajectory.publish(bambiTrajectory);
-
-    ROS_INFO("Trajectory generator got path with constraints messages");
-}
-
-
-
 void TrajectoryGeneratorNode::generateTrajectory()
 {
-    const float safeVelFactor = 0.8f;
+    //preper PositionTarget message
+    mavros_msgs::PositionTarget posTargetLocal;
+    posTargetLocal.coordinate_frame = mavros_msgs::PositionTarget::FRAME_LOCAL_NED;
+    posTargetLocal.type_mask = mavros_msgs::PositionTarget::IGNORE_AFX |
+            mavros_msgs::PositionTarget::IGNORE_AFY |
+            mavros_msgs::PositionTarget::IGNORE_AFZ |
+            mavros_msgs::PositionTarget::IGNORE_YAW ;
+
     bool lastElementReached = false;
-    std::vector<point_xy_t> trajectoryXY;
     long N;
     size_t i = 0;
     size_t j = 0;
-    size_t pathXYSize = m_path_xy.size();
-    while(i < pathXYSize && !lastElementReached){
+    size_t pathXYZSize = m_pathXYZ_relAltitude.size();
+
+    while(i < pathXYZSize && !lastElementReached){
         j = i;
         N = 0;
         do{
             ++j;
-            double dist = boost::geometry::distance(m_path_xy[i],m_path_xy[j]);
+            double dist = dist2D(m_pathXYZ_relAltitude[i], m_pathXYZ_relAltitude[j]);
             //N= number of generated setpoint in the current segment
-            N = std::lround(m_setPointRate* dist/(m_maxVel * safeVelFactor) );
+            N = std::lround(m_setPointRate* dist/(m_maxVel) );
 
-            if (j >= pathXYSize - 1){
+            if (j >= pathXYZSize - 1){
                 lastElementReached = true;
             }
         //if we have no setpoint in the current segment we compute the distance to the next provided point
@@ -182,18 +124,19 @@ void TrajectoryGeneratorNode::generateTrajectory()
 
         if ( N==1 ){
             //if we have only one setpoint for the current segment we send the last poit of the segment
-            point_xy_t newSPoint;
-            newSPoint.set<0>(m_path_xy[j].get<0>());
-            newSPoint.set<1>(m_path_xy[j].get<1>());
-            trajectoryXY.push_back(newSPoint);
+            posTargetLocal.position.x = m_pathXYZ_relAltitude[j].x;
+            posTargetLocal.position.y = m_pathXYZ_relAltitude[j].y;
+            posTargetLocal.position.z = m_pathXYZ_relAltitude[j].alt;
+            m_positionTrajectoryENU.push_back(posTargetLocal);
         }else{
             for (size_t k = 0; k < N; ++k){
                 //if we want N setpoint we must divide the segment in N-1 parts
                 double t = k/(N-1);
                 point_xy_t newSPoint;
-                newSPoint.set<0>(m_path_xy[i].get<0>() * (1-t) + m_path_xy[j].get<0>() * t);
-                newSPoint.set<1>(m_path_xy[i].get<1>() * (1-t) + m_path_xy[j].get<1>() * t);
-                trajectoryXY.push_back(newSPoint);
+                posTargetLocal.position.x = m_pathXYZ_relAltitude[i].x * (1-t) + m_pathXYZ_relAltitude[j].x * t;
+                posTargetLocal.position.y = m_pathXYZ_relAltitude[i].y * (1-t) + m_pathXYZ_relAltitude[j].y * t;
+                posTargetLocal.position.z = m_pathXYZ_relAltitude[i].alt * (1-t) + m_pathXYZ_relAltitude[j].alt *t;
+                m_positionTrajectoryENU.push_back(posTargetLocal);
             }
 
         }
@@ -202,30 +145,19 @@ void TrajectoryGeneratorNode::generateTrajectory()
 
     }
     if(N <= 0 && lastElementReached){
-        trajectoryXY.push_back(m_path_xy.back());
+
+        posTargetLocal.position.x = m_pathXYZ_relAltitude.back().x;
+        posTargetLocal.position.y = m_pathXYZ_relAltitude.back().y;
+        posTargetLocal.position.z = m_pathXYZ_relAltitude.back().alt;
+
+        m_positionTrajectoryENU.push_back(posTargetLocal);
     }
-
-
-    m_positionTrajectoryXY = trajectoryXY;
-}
-
-void TrajectoryGeneratorNode::convertTrajectoryXYToGeoPoint(uint8_t zone, char band)
-{
-
-    geographic_msgs::GeoPoint geoPoint;
-    for (auto pointXY : m_positionTrajectoryXY){
-        geodesy::UTMPoint utmPoint(pointXY.get<0>(),pointXY.get<1>(),zone, band);
-        geoPoint = geodesy::toMsg(utmPoint);
-        m_positionTrajectoryGeo.push_back(geoPoint);
-    }
-
 
 }
 
-void TrajectoryGeneratorNode::transformTrajectoryToLocalENU()
+
+double TrajectoryGeneratorNode::dist2D(const PointXYZ_relAltitude &p1, const PointXYZ_relAltitude &p2)
 {
-
-
-
+    return sqrt(pow(p1.x - p2.x, 2.) + pow(p1.y - p2.y, 2.));
 }
 
