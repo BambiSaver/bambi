@@ -26,6 +26,7 @@
 
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/PositionTarget.h>
+#include <mavros_msgs/HomePosition.h>
 
 //#include <ros/service_client.h>
 
@@ -58,6 +59,18 @@ FlightControllerNode::FlightControllerNode(const ros::NodeHandle &nodeHandle)
                 "/mavros/state", 10,
                 &FlightControllerNode::cb_uav_state_change, this);
 
+    m_subscriberAltitude = m_nodeHandle.subscribe(
+                "/mavros/altitude", 500,
+                &FlightControllerNode::cb_uav_altitude, this);
+
+    m_subscriberHomePosition = m_nodeHandle.subscribe(
+                "/mavros/home_position/home", 50,
+                &FlightControllerNode::cb_uav_home_position, this);
+
+    m_subscriberLocalPositionPose = m_nodeHandle.subscribe(
+                "/mavros/local_position/pose", 500,
+                &FlightControllerNode::cb_uav_local_position_pose, this);
+
 //    m_serviceClientSetMode = m_nodeHandle.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
 }
 
@@ -77,6 +90,21 @@ void FlightControllerNode::cb_uav_state_change(const mavros_msgs::State &msg) {
     }
 }
 
+void FlightControllerNode::cb_uav_altitude(const mavros_msgs::Altitude &msg) {
+    ROS_INFO_THROTTLE(5, "Receiving altitutde updates (relative to ground: %.2f)", msg.relative);
+    m_lastAltitude = msg;
+}
+
+void FlightControllerNode::cb_uav_home_position(const mavros_msgs::HomePosition &msg) {
+    ROS_INFO_THROTTLE(5, "Receiving home position updates (%.5f, %.5f)", msg.geo.latitude, msg.geo.longitude);
+    m_lastHomePosition = msg;
+}
+
+void FlightControllerNode::cb_uav_local_position_pose(const geometry_msgs::PoseStamped &msg) {
+    ROS_INFO_THROTTLE(5, "Receiving local position updates (%.2f, %.2f, %.2f)", msg.pose.position.x, msg.pose.position.y, msg.pose.position.z);
+    m_lastLocalPositionPose = msg;
+}
+
 void FlightControllerNode::cb_bias_setpoints_timer(const ros::TimerEvent &) {
     handleStateMachineCommand(Command::TIME_TO_CHANGE_MODE, NULL);
 }
@@ -94,6 +122,7 @@ void FlightControllerNode::changeState(FlightControllerNode::State newState) {
     m_state = newState;
 }
 
+
 void FlightControllerNode::spin() {
     ros::AsyncSpinner spinner(2);
     spinner.start();
@@ -102,9 +131,9 @@ void FlightControllerNode::spin() {
         case State::PUBLISHING_FIRST_POINTS:
         case State::WAITING_FOR_MODE_CHANGE:
         case State::REACHED_HOME: // continue to publish last setpoint
-        case State::FLYING:
+        //case State::FLYING:
             //ROS_INFO("PUBLISHING FIRST POINTS (index = %d", static_cast<int>(m_index));
-
+{
             mavros_msgs::PositionTarget pos;
             pos.position.x = 89.0;
             pos.position.y = 19.0;
@@ -122,23 +151,23 @@ void FlightControllerNode::spin() {
 
             m_publisherSetPosition.publish(pos);
             break;
-//        case State::FLYING:
-            // DO NOT FLY FOR NOW
+        }
+        case State::FLYING:
 
-//            ++m_index;
-//            if (m_index < m_trajectory->setpoints.size()) {
-//                m_trajectory->setpoints[m_index].header.stamp = ros::Time::now();
-//                m_publisherSetPosition.publish(m_trajectory->setpoints[m_index]);
-//            } else {
-//                // reached home
-//                // return index to save value
-//                --m_index;
-//                std_msgs::Bool b;
-//                b.data = true;
-//                m_publisherReachedHome.publish(b);
-//                changeState(State::REACHED_HOME);
-//            }
-//            break;
+            ++m_index;
+            if (m_index < m_trajectory->setpoints.size()) {
+                m_trajectory->setpoints[m_index].header.stamp = ros::Time::now();
+                m_publisherSetPosition.publish(m_trajectory->setpoints[m_index]);
+            } else {
+                // reached home
+                // return index to save value
+                --m_index;
+                std_msgs::Bool b;
+                b.data = true;
+                m_publisherReachedHome.publish(b);
+                changeState(State::REACHED_HOME);
+            }
+            break;
         }
         //ros::spinOnce();
         m_rate.sleep();

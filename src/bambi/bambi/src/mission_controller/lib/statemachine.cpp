@@ -76,6 +76,11 @@ void StateMachine::cb_uav_state_extended_change(const mavros_msgs::ExtendedState
     handleStateMachineCommand(Command::LANDED_STATE_UPDATE, (void*)&msg);
   }
 }
+
+void StateMachine::cb_uav_altitude(const mavros_msgs::Altitude &msg) {
+    ROS_INFO_THROTTLE(5, "Receiving altitude updates (relative to ground: %.2f)", msg.relative);
+    m_lastAltitude = msg;
+}
 void StateMachine::cb_update_global_position(const sensor_msgs::NavSatFix &navSatFix) {
   // save in any case
   m_lastGlobalPosition = navSatFix;

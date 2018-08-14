@@ -62,6 +62,8 @@ int main(int argc, char **argv)
                         &StateMachine::cb_uav_state_change, &stateMachine));
   subscribers.push_back(nh.subscribe("/mavros/global_position/global",500,
                         &StateMachine::cb_update_global_position, &stateMachine));
+  subscribers.push_back(nh.subscribe("/mavros/altitude",500,
+                        &StateMachine::cb_uav_altitude, &stateMachine));
   subscribers.push_back(nh.subscribe("/mavros/extended_state",50,
                         &StateMachine::cb_uav_state_extended_change, &stateMachine));
   subscribers.push_back(nh.subscribe("/mavros/mission/reached",5,

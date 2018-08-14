@@ -33,7 +33,9 @@
 #include <bambi_msgs/Trajectory.h>
 #include <mavros_msgs/GlobalPositionTarget.h>
 #include <mavros_msgs/State.h>
-
+#include <mavros_msgs/Altitude.h>
+#include <mavros_msgs/HomePosition.h>
+#include <geometry_msgs/PoseStamped.h>
 
 namespace bambi {
 namespace flight_controller {
@@ -69,6 +71,9 @@ private:
     void cb_trigger_hover(const std_msgs::Bool& hoverOn);
     void cb_hovering_position(const mavros_msgs::GlobalPositionTarget& hoveringPosition);
     void cb_uav_state_change(const mavros_msgs::State &msg);
+    void cb_uav_altitude(const mavros_msgs::Altitude &msg);
+    void cb_uav_home_position(const mavros_msgs::HomePosition &msg);
+    void cb_uav_local_position_pose(const geometry_msgs::PoseStamped &msg);
     void cb_bias_setpoints_timer(const ros::TimerEvent&);
 
     void changeState(FlightControllerNode::State newState);
@@ -84,6 +89,9 @@ private:
     ros::Subscriber m_subscriberHoverTrigger;
     ros::Subscriber m_subscriberHoveringPosition;
     ros::Subscriber m_subscriberVehicleState;
+    ros::Subscriber m_subscriberAltitude;
+    ros::Subscriber m_subscriberHomePosition;
+    ros::Subscriber m_subscriberLocalPositionPose;
 //    ros::ServiceClient m_serviceClientSetMode;
     ros::Timer m_biasSetpointTimer;
 
@@ -93,6 +101,9 @@ private:
     boost::shared_ptr<bambi_msgs::Trajectory> m_trajectory;
     size_t m_index;
     ros::Rate m_rate;
+    mavros_msgs::Altitude m_lastAltitude;
+    mavros_msgs::HomePosition m_lastHomePosition;
+    geometry_msgs::PoseStamped m_lastLocalPositionPose;
 
 
     static const std::map<State, const char *> stateToStringMap;

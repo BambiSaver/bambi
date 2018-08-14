@@ -30,6 +30,7 @@
 #include <mavros_msgs/ExtendedState.h>
 #include <mavros_msgs/BambiMissionTrigger.h>
 #include <mavros_msgs/WaypointReached.h>
+#include <mavros_msgs/Altitude.h>
 #include <sensor_msgs/NavSatFix.h>
 #include <bambi_msgs/Field.h>
 #include <bambi_msgs/Path.h>
@@ -61,6 +62,7 @@ public:
     void cb_mission_trigger_received (const mavros_msgs::BambiMissionTrigger& msg);
     void cb_uav_state_change(const mavros_msgs::State& msg);
     void cb_uav_state_extended_change(const mavros_msgs::ExtendedState& msg);
+    void cb_uav_altitude(const mavros_msgs::Altitude &msg);
     void cb_update_global_position(const sensor_msgs::NavSatFix& navSatFix);
     void cb_arming_timer(const ros::TimerEvent&);
     void cb_mission_waypoint_reached(const mavros_msgs::WaypointReached& msg);
@@ -126,6 +128,7 @@ private:
     mavros_msgs::BambiMissionTrigger m_missionTriggerStart;
     mavros_msgs::ExtendedState::_landed_state_type m_lastUavLandedState;
     mavros_msgs::State::_mode_type m_lastUavMode;
+    mavros_msgs::Altitude m_lastAltitude;
     sensor_msgs::NavSatFix m_lastGlobalPosition;
     
     static const std::map<State, const char *> stateToStringMap;
