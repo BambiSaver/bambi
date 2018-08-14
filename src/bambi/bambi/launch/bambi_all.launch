@@ -1,17 +1,17 @@
 <launch>
   <!-- Run optical_cam node under "bambi" namespace -->
-  <node name="optical_cam" ns="bambi" pkg="bambi" type="optical_cam"/>
+  <node name="optical_cam" output="screen" ns="bambi" pkg="bambi" type="optical_cam"/>
 
   <!-- Run boundary_generator node under "bambi" namespace -->
-  <node name="boundary_generator" ns="bambi" pkg="bambi" type="boundary_generator"/>
+  <node name="boundary_generator" output="screen" ns="bambi" pkg="bambi" type="boundary_generator"/>
 
-  <node name="kml_generator" ns="bambi" pkg="bambi" type="kml_generator"/>
+  <node name="kml_generator" output="screen" ns="bambi" pkg="bambi" type="kml_generator"/>
 
   <!-- Run coverage_path_planner node under "bambi" namespace -->
-  <node name="coverage_path_planner" ns="bambi" pkg="bambi" type="coverage_path_planner"/>
+  <node name="coverage_path_planner" output="screen" ns="bambi" pkg="bambi" type="coverage_path_planner"/>
 
   <!-- Run trajectory_generator node under "bambi" namespace -->
-  <node name="trajectory_generator" ns="bambi" pkg="bambi" type="trajectory_generator"/>
+  <node name="trajectory_generator" output="screen" ns="bambi" pkg="bambi" type="trajectory_generator"/>
 
   <!-- Run flight_controller node under "bambi" namespace -->
   <node name="flight_controller" output="screen" ns="bambi" pkg="bambi" type="flight_controller"/>

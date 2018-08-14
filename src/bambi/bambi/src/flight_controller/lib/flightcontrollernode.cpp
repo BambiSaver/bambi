@@ -70,8 +70,6 @@ FlightControllerNode::FlightControllerNode(const ros::NodeHandle &nodeHandle)
     m_subscriberLocalPositionPose = m_nodeHandle.subscribe(
                 "/mavros/local_position/pose", 500,
                 &FlightControllerNode::cb_uav_local_position_pose, this);
-
-//    m_serviceClientSetMode = m_nodeHandle.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
 }
 
 
@@ -91,17 +89,21 @@ void FlightControllerNode::cb_uav_state_change(const mavros_msgs::State &msg) {
 }
 
 void FlightControllerNode::cb_uav_altitude(const mavros_msgs::Altitude &msg) {
-    ROS_INFO_THROTTLE(5, "Receiving altitutde updates (relative to ground: %.2f)", msg.relative);
+    if (std::isnan(msg.terrain)) {
+        ROS_WARN_THROTTLE(2, "NO TERRAIN INFORMATION AVAILABLE, MAKE SURE YOU DON'T HIT THE GROUND");
+    } else {
+        ROS_INFO_THROTTLE(10, "Receiving altitude updates (relative to ground: %.2f)", msg.terrain);
+    }
     m_lastAltitude = msg;
 }
 
 void FlightControllerNode::cb_uav_home_position(const mavros_msgs::HomePosition &msg) {
-    ROS_INFO_THROTTLE(5, "Receiving home position updates (%.5f, %.5f)", msg.geo.latitude, msg.geo.longitude);
+    ROS_INFO_THROTTLE(10, "Continue receiving home position updates (%.5f, %.5f)", msg.geo.latitude, msg.geo.longitude);
     m_lastHomePosition = msg;
 }
 
 void FlightControllerNode::cb_uav_local_position_pose(const geometry_msgs::PoseStamped &msg) {
-    ROS_INFO_THROTTLE(5, "Receiving local position updates (%.2f, %.2f, %.2f)", msg.pose.position.x, msg.pose.position.y, msg.pose.position.z);
+    ROS_INFO_THROTTLE(10, "Contintue receiving local position updates (%.2f, %.2f, %.2f)", msg.pose.position.x, msg.pose.position.y, msg.pose.position.z);
     m_lastLocalPositionPose = msg;
 }
 
@@ -124,36 +126,17 @@ void FlightControllerNode::changeState(FlightControllerNode::State newState) {
 
 
 void FlightControllerNode::spin() {
-    ros::AsyncSpinner spinner(2);
+    ros::AsyncSpinner spinner(4);
     spinner.start();
+
     while (ros::ok()) {
         switch (m_state) {
         case State::PUBLISHING_FIRST_POINTS:
         case State::WAITING_FOR_MODE_CHANGE:
-        case State::REACHED_HOME: // continue to publish last setpoint
-        //case State::FLYING:
-            //ROS_INFO("PUBLISHING FIRST POINTS (index = %d", static_cast<int>(m_index));
-{
-            mavros_msgs::PositionTarget pos;
-            pos.position.x = 89.0;
-            pos.position.y = 19.0;
-            pos.position.z = 45.0;
-            pos.velocity.x = 0;
-            pos.velocity.y = 0;
-            pos.velocity.z = 0;
-            pos.coordinate_frame = mavros_msgs::PositionTarget::FRAME_LOCAL_NED;
-            pos.header.stamp = ros::Time::now();
-            pos.type_mask = mavros_msgs::PositionTarget::IGNORE_AFX |
-                    mavros_msgs::PositionTarget::IGNORE_AFY |
-                    mavros_msgs::PositionTarget::IGNORE_AFZ |
-                    mavros_msgs::PositionTarget::IGNORE_YAW |
-                    mavros_msgs::PositionTarget::IGNORE_YAW_RATE;
-
-            m_publisherSetPosition.publish(pos);
+            m_missionStartPositionTarget.header.stamp = ros::Time::now();
+            m_publisherSetPosition.publish(m_missionStartPositionTarget);
             break;
-        }
         case State::FLYING:
-
             ++m_index;
             if (m_index < m_trajectory->setpoints.size()) {
                 m_trajectory->setpoints[m_index].header.stamp = ros::Time::now();
@@ -165,21 +148,23 @@ void FlightControllerNode::spin() {
                 std_msgs::Bool b;
                 b.data = true;
                 m_publisherReachedHome.publish(b);
+                // TODO maybe mutex would be necessary, but in Sate::FLYING we should be fine
+                // BUT eventually a TRIGGER_HOVER could get overwritten --> RACECONDITION
+                // SOLUTION: ACQUIRE MUTEX ONLY HERE, AND CHECK IF STATE HASN'T BEEN CHANGED IN THE MEAN TIME
                 changeState(State::REACHED_HOME);
             }
             break;
+        case State::REACHED_HOME: // continue to publish last setpoint
+            m_trajectory->setpoints[m_index].header.stamp = ros::Time::now();
+            m_publisherSetPosition.publish(m_trajectory->setpoints[m_index]);
         }
-        //ros::spinOnce();
         m_rate.sleep();
     }
     spinner.stop();
 }
 
 void FlightControllerNode::handleStateMachineCommand(FlightControllerNode::Command command, const void *msg) {
-
     m_mutex.lock();
-
-
     switch (m_state) {
     case State::READY:
         if (command == Command::NEW_TRAJECTORY_RECEIVED) {
@@ -187,6 +172,10 @@ void FlightControllerNode::handleStateMachineCommand(FlightControllerNode::Comma
             m_index = 0;
             m_rate = ros::Rate(trajectory->sample_rate);
             m_trajectory = boost::shared_ptr<bambi_msgs::Trajectory>(new bambi_msgs::Trajectory(*trajectory));
+
+            // TODO check if m_lastLocalPositionPose is valid(!)
+            m_missionStartPositionTarget = createStartPositionTarget();
+
             changeState(State::PUBLISHING_FIRST_POINTS);
             m_biasSetpointTimer = m_nodeHandle.createTimer(ros::Duration(2.0), &FlightControllerNode::cb_bias_setpoints_timer, this, true, false);
             m_biasSetpointTimer.start();
@@ -196,39 +185,21 @@ void FlightControllerNode::handleStateMachineCommand(FlightControllerNode::Comma
         break;
     case State::PUBLISHING_FIRST_POINTS:
         if (command == Command::TIME_TO_CHANGE_MODE) {
-
             mavros_msgs::SetMode commandSetMode;
-            //commandSetMode.request.base_mode = 1; //stands for MAV_MODE_FLAG_CUSTOM_MODE_ENABLED
+            commandSetMode.request.base_mode = 1;
             commandSetMode.request.custom_mode = "OFFBOARD";
-
-
             changeState(State::WAITING_FOR_MODE_CHANGE);
 
-            if (!ros::service::waitForService("/mavros/set_mode", 5)){
-                ROS_ERROR("The service /mavros/set_mode is not avaiable");
+            if (!ros::service::waitForService("/mavros/set_mode", 2)
+                    || !ros::service::call("/mavros/set_mode", commandSetMode)
+                    || commandSetMode.response.mode_sent != commandSetMode.request.base_mode) {
 
+                // TODO RTL after awhile --> sth like m_numberOfRetries
+                ROS_ERROR("Settting mode failed, retrying... %d != %d", commandSetMode.response.mode_sent, commandSetMode.request.base_mode);
+                changeState(State::PUBLISHING_FIRST_POINTS);
+                m_biasSetpointTimer = m_nodeHandle.createTimer(ros::Duration(2.0), &FlightControllerNode::cb_bias_setpoints_timer, this, true, false);
+                m_biasSetpointTimer.start();
             }
-
-
-            if (!ros::service::call("/mavros/set_mode",commandSetMode)) {
-                  ROS_ERROR("Set_mode service cannot send SetMode message");
-
-            }
-
-            if (commandSetMode.response.mode_sent == commandSetMode.request.base_mode){
-                  ROS_INFO("Mode id %d succesfully sent", commandSetMode.response.mode_sent);
-            }
-
-//            // TODO wait for service, error handling ecc.
-//            if (m_serviceClientSetMode.call(commandSetMode)) {
-//                // sent correctly, just wait for callback
-//            } else {
-//                ROS_WARN("Set Mode failed, retrying");
-//                changeState(State::PUBLISHING_FIRST_POINTS);
-//                m_biasSetpointTimer = m_nodeHandle.createTimer(ros::Duration(2.0), &FlightControllerNode::cb_bias_setpoints_timer, this, true, false);
-//                m_biasSetpointTimer.start();
-//                // retrying
-//            }
         } else {
             ROS_WARN("Ignoring command %s in state PUBLISHING_FIRST_POINTS", commandToStringMap.at(command));
         }
@@ -266,9 +237,40 @@ void FlightControllerNode::handleStateMachineCommand(FlightControllerNode::Comma
         }*/
         break;
     }
-
-
     m_mutex.unlock();
+}
+
+
+
+
+mavros_msgs::PositionTarget FlightControllerNode::createStartPositionTarget()
+{
+    ROS_INFO("Assigning %.2f %.2f %.2f as start position target",
+             m_lastLocalPositionPose.pose.position.x,
+             m_lastLocalPositionPose.pose.position.y,
+             m_lastLocalPositionPose.pose.position.z);
+    mavros_msgs::PositionTarget pos;
+    pos.position.x = m_lastLocalPositionPose.pose.position.x;
+    pos.position.y = m_lastLocalPositionPose.pose.position.y;
+    pos.position.z = m_lastLocalPositionPose.pose.position.z;
+    pos.velocity.x = 0;
+    pos.velocity.y = 0;
+    pos.velocity.z = 0;
+    // align yaw with first setpoint
+    pos.yaw = m_trajectory->setpoints[0].yaw;
+    pos.yaw_rate = 0;
+    pos.coordinate_frame = mavros_msgs::PositionTarget::FRAME_LOCAL_NED;
+    pos.header.stamp = ros::Time::now();
+    pos.type_mask = mavros_msgs::PositionTarget::IGNORE_AFX |
+            mavros_msgs::PositionTarget::IGNORE_AFY |
+            mavros_msgs::PositionTarget::IGNORE_AFZ |
+            mavros_msgs::PositionTarget::IGNORE_YAW_RATE;
+
+    if (std::isnan(m_trajectory->setpoints[0].yaw)) {
+        pos.type_mask |= mavros_msgs::PositionTarget::IGNORE_YAW;
+    }
+
+    return pos;
 }
 
 

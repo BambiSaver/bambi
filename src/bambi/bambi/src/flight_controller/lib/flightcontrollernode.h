@@ -92,7 +92,6 @@ private:
     ros::Subscriber m_subscriberAltitude;
     ros::Subscriber m_subscriberHomePosition;
     ros::Subscriber m_subscriberLocalPositionPose;
-//    ros::ServiceClient m_serviceClientSetMode;
     ros::Timer m_biasSetpointTimer;
 
     std::mutex m_mutex;
@@ -104,10 +103,13 @@ private:
     mavros_msgs::Altitude m_lastAltitude;
     mavros_msgs::HomePosition m_lastHomePosition;
     geometry_msgs::PoseStamped m_lastLocalPositionPose;
+    mavros_msgs::PositionTarget m_missionStartPositionTarget;
+
 
 
     static const std::map<State, const char *> stateToStringMap;
     static const std::map<Command, const char *> commandToStringMap;
+    mavros_msgs::PositionTarget createStartPositionTarget();
 };
 
 }
