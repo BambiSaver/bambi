@@ -40,7 +40,7 @@ TrajectoryGeneratorNode::TrajectoryGeneratorNode(const ros::NodeHandle& nodeHand
                                                       &TrajectoryGeneratorNode::cb_update_home_position,this);
     m_subscriberTriggerTrajectoryGeneration = m_nodeHandle.subscribe("/bambi/mission_controller/trigger_trajectory_generation", 10,
                                                                      &TrajectoryGeneratorNode::cb_trigger_trajectory_generation, this);
-    m_setPointRate = 20.0f;
+    m_setPointRate = 50.0f;
 }
 
 void TrajectoryGeneratorNode::spin()
