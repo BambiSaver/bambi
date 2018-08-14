@@ -23,7 +23,8 @@
  */
 #include "trajectorygeneratornode.h"
 #include "bambi_msgs/Trajectory.h"
-#include "mavros_msgs/GlobalPositionTarget.h"
+#include <mavros_msgs/PositionTarget.h>
+#include <mavros_msgs/GlobalPositionTarget.h>
 #include <geodesy/utm.h>
 #include <boost/geometry/algorithms/distance.hpp>
 
@@ -78,16 +79,35 @@ void TrajectoryGeneratorNode::cb_trigger_trajectory_generation(const bambi_msgs:
     //TODO compute derivative for velocity setpoint
     for (auto geoPoint : m_positionTrajectoryGeo) {
         mavros_msgs::GlobalPositionTarget globalPositionTarget;
-        globalPositionTarget.coordinate_frame = mavros_msgs::GlobalPositionTarget::FRAME_GLOBAL_TERRAIN_ALT;
+        globalPositionTarget.coordinate_frame = mavros_msgs::GlobalPositionTarget::FRAME_GLOBAL_REL_ALT;
         globalPositionTarget.latitude = geoP.latitude;
         globalPositionTarget.longitude = geoP.longitude;
 
         //TODO get rel altitude from terrain from message
-        globalPositionTarget.altitude = 10.0f;
+        globalPositionTarget.altitude = 45.0f;
         globalPositionTarget.type_mask = mavros_msgs::GlobalPositionTarget::IGNORE_VX |
                 mavros_msgs::GlobalPositionTarget::IGNORE_VY | mavros_msgs::GlobalPositionTarget::IGNORE_VZ;
 
-        bambiTrajectory.setpoints.push_back(globalPositionTarget);
+
+
+        // TODO : convert to local pos(!) NOTE: header.stamp set in flightcontroller
+        mavros_msgs::PositionTarget pos;
+
+        pos.position.x = 89.0;
+        pos.position.y = 19.0;
+        pos.position.z = 45.0;
+        pos.velocity.x = 0;
+        pos.velocity.y = 0;
+        pos.velocity.z = 0;
+        pos.coordinate_frame = mavros_msgs::PositionTarget::FRAME_LOCAL_NED;
+        pos.type_mask = mavros_msgs::PositionTarget::IGNORE_AFX |
+                mavros_msgs::PositionTarget::IGNORE_AFY |
+                mavros_msgs::PositionTarget::IGNORE_AFZ |
+                mavros_msgs::PositionTarget::IGNORE_YAW |
+                mavros_msgs::PositionTarget::IGNORE_YAW_RATE;
+
+
+        bambiTrajectory.setpoints.push_back(pos);
     }
 
     m_publisherTrajectory.publish(bambiTrajectory);

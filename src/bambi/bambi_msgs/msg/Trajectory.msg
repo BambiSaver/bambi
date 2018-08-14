@@ -1,2 +1,2 @@
-float32 sample_rate
-mavros_msgs/GlobalPositionTarget[] setpoints
+float64 sample_rate
+mavros_msgs/PositionTarget[] setpoints

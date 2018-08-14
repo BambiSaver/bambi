@@ -32,7 +32,7 @@
 #include <mavros_msgs/SetMode.h>
 using namespace bambi::missioncontroller;
 
-#define PATH_GENERATOR_DEV_SETUP
+//#define PATH_GENERATOR_DEV_SETUP
 
 
 StateMachine::StateMachine(const MCPublisher &publisher, rosTimerProviderFunction armTimerProvider) :
@@ -128,7 +128,6 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             }
         } else {
             ROS_WARN("Ignoring command %s in state INIT", commandToStringMap.at(command));
-            break;
         }
         break;
     case State::READY:
@@ -223,6 +222,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
                                 changeState(State::STARTING_PHOTO_MISSION);
                             }
                             else{
+                                // TODO RTL?
                                 //Not able to change mode and start mission
                                 changeState(State::READY);
                             }
@@ -405,7 +405,7 @@ const std::map<StateMachine::State, const char *>  StateMachine::stateToStringMa
   { StateMachine::State::READY, "READY" },
   { StateMachine::State::ARMING, "ARMING" },
   { StateMachine::State::TAKING_OFF, "TAKING_OFF" },
-  { StateMachine::State::STARTING_PHOTO_MISSION, "STARTING_PHOTO_MISSION" },  
+  { StateMachine::State::STARTING_PHOTO_MISSION, "STARTING_PHOTO_MISSION" },
   { StateMachine::State::REACHING_MISSION_START_POINT, "REACHING_MISSION_START_POINT" },
   { StateMachine::State::TAKING_ORTHO_PHOTO, "TAKING_ORTHO_PHOTO" },
   { StateMachine::State::GENERATING_BOUNDARY, "GENERATING_BOUNDARY" },
