@@ -26,13 +26,13 @@ master.mav.command_long_send(
 #    mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
 	2720,
     0,
-    1.0,				#mission startStop
+    1,				    #mission startStop
     10.0,				#TakeOff altitude in meters above home position
     46.453072,			#Ortophoto latitude
     11.492048,			#Orthophoto longitude
-    1494.0,				#Orthophoto altitude in meter AMSL 
-    40.0,				#Scanning altitude in meter above the ground (terrain altitude)									
-    8.0					#Thermal camera footprint min dimension
+    0,				    #BUG : CANNOT BE USED, not forwarded to MAVROS somehow...#Orthophoto altitude in meter AMSL 
+    10.0,                  #Scanning altitude in meter above the ground (terrain altitude)									
+    1494.0				# --> THIIS PHOTO ALTITUDE, NOT Thermal camera footprint min dimension
         );
 
 
@@ -58,30 +58,30 @@ while not ack:
 
 sys.exit(0);
 
-sleep(5);
+# sleep(5);
 
-# Disarm
-# master.arducopter_disarm() or:
-master.mav.command_long_send(
-    master.target_system,
-    master.target_component,
-    mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
-    0,
-    0, 0, 0, 0, 0, 0, 0)
+# # Disarm
+# # master.arducopter_disarm() or:
+# master.mav.command_long_send(
+#     master.target_system,
+#     master.target_component,
+#     mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
+#     0,
+#     0, 0, 0, 0, 0, 0, 0)
 
-ack = False
-while not ack:
-    # Wait for ACK command
-    ack_msg = master.recv_match(type='COMMAND_ACK', blocking=True)
-    ack_msg = ack_msg.to_dict()
+# ack = False
+# while not ack:
+#     # Wait for ACK command
+#     ack_msg = master.recv_match(type='COMMAND_ACK', blocking=True)
+#     ack_msg = ack_msg.to_dict()
 
-    print ack_msg
+#     print ack_msg
 
-    # Check if command in the same in `arm_disarm`
-    if ack_msg['command'] != mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM:
-        print "wrong acknoledged"
-        continue
+#     # Check if command in the same in `arm_disarm`
+#     if ack_msg['command'] != mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM:
+#         print "wrong acknoledged"
+#         continue
 
-    # Print the ACK result !
-    print(mavutil.mavlink.enums['MAV_RESULT'][ack_msg['result']].description)
-    break
+#     # Print the ACK result !
+#     print(mavutil.mavlink.enums['MAV_RESULT'][ack_msg['result']].description)
+#     break

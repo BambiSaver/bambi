@@ -81,7 +81,7 @@ void FlightControllerNode::cb_trigger_coverage_flight(const bambi_msgs::Trajecto
 }
 
 void FlightControllerNode::cb_uav_state_change(const mavros_msgs::State &msg) {
-    ROS_INFO_THROTTLE(5, "Mode update (==> '%s')", msg.mode.c_str());
+//    ROS_INFO_THROTTLE(5, "Mode update (==> '%s')", msg.mode.c_str());
 
     if (msg.mode == "OFFBOARD") {
         handleStateMachineCommand(Command::UAV_MODE_CHANGED_TO_OFFBOARD, NULL);
@@ -90,20 +90,20 @@ void FlightControllerNode::cb_uav_state_change(const mavros_msgs::State &msg) {
 
 void FlightControllerNode::cb_uav_altitude(const mavros_msgs::Altitude &msg) {
     if (std::isnan(msg.terrain)) {
-        ROS_WARN_THROTTLE(2, "NO TERRAIN INFORMATION AVAILABLE, MAKE SURE YOU DON'T HIT THE GROUND");
+        ROS_WARN_THROTTLE(60, "NO TERRAIN INFORMATION AVAILABLE, MAKE SURE YOU DON'T HIT THE GROUND");
     } else {
-        ROS_INFO_THROTTLE(10, "Receiving altitude updates (relative to ground: %.2f)", msg.terrain);
+//        ROS_INFO_THROTTLE(10, "Receiving altitude updates (relative to ground: %.2f)", msg.terrain);
     }
     m_lastAltitude = msg;
 }
 
 void FlightControllerNode::cb_uav_home_position(const mavros_msgs::HomePosition &msg) {
-    ROS_INFO_THROTTLE(10, "Continue receiving home position updates (%.5f, %.5f)", msg.geo.latitude, msg.geo.longitude);
+//    ROS_INFO_THROTTLE(10, "Continue receiving home position updates (%.5f, %.5f)", msg.geo.latitude, msg.geo.longitude);
     m_lastHomePosition = msg;
 }
 
 void FlightControllerNode::cb_uav_local_position_pose(const geometry_msgs::PoseStamped &msg) {
-    ROS_INFO_THROTTLE(10, "Contintue receiving local position updates (%.2f, %.2f, %.2f)", msg.pose.position.x, msg.pose.position.y, msg.pose.position.z);
+//    ROS_INFO_THROTTLE(10, "Contintue receiving local position updates (%.2f, %.2f, %.2f)", msg.pose.position.x, msg.pose.position.y, msg.pose.position.z);
     m_lastLocalPositionPose = msg;
 }
 
