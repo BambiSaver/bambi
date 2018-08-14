@@ -338,7 +338,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             pathWithConstraints.path = *((bambi_msgs::Path*)msg);
 
             // TODO get from m_missionTriggerStart (?)
-            pathWithConstraints.flight_constraints.max_velocity = 8.0;
+            pathWithConstraints.flight_constraints.max_velocity = 6.5;
             pathWithConstraints.flight_constraints.max_acceleration = 15.0;
             m_publisher.triggerTrajectoryGeneration(pathWithConstraints);
         } else if (command == Command::GLOBAL_POSITION_UPDATE // savely ignore GPS update, because we are not tracking any position here

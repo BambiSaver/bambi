@@ -106,7 +106,7 @@ void TrajectoryGeneratorNode::generateTrajectory()
             mavros_msgs::PositionTarget::IGNORE_AFY |
             mavros_msgs::PositionTarget::IGNORE_AFZ |
             mavros_msgs::PositionTarget::IGNORE_YAW ;
-    ROS_INFO("size of Position target: %d",sizeof(posTargetLocal));
+
     bool lastElementReached = false;
     long N;
     size_t i = 0;
@@ -176,11 +176,9 @@ void TrajectoryGeneratorNode::generateTrajectory()
 
     ROS_INFO("%.2f / %.2f * %.2f = %.2f", totalDist, m_maxVel, m_setPointRate, std::floor(totalDist / m_maxVel * m_setPointRate));
 
-    ROS_INFO("Size of setpoint msg: %d,    size of Trajectory vector: %d",sizeof(posTargetLocal), m_pPositionTrajectoryENU->size());
-
     ROS_INFO("Path length = %.2f", totalDist);
 
-    ROS_INFO("GOT MANY POINTS: %d", m_pPositionTrajectoryENU->size());
+    ROS_INFO("GOT MANY POINTS: %d", static_cast<int>(m_pPositionTrajectoryENU->size()));
 }
 
 

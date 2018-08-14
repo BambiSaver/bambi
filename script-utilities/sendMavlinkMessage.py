@@ -31,7 +31,7 @@ master.mav.command_long_send(
     46.453072,			#Ortophoto latitude
     11.492048,			#Orthophoto longitude
     0,				    #BUG : CANNOT BE USED, not forwarded to MAVROS somehow...#Orthophoto altitude in meter AMSL 
-    6.0,                  #Scanning altitude in meter above the ground (terrain altitude)									
+    4.0,                  #Scanning altitude in meter above the ground (terrain altitude)									
     1474.0				# --> THIIS PHOTO ALTITUDE, NOT Thermal camera footprint min dimension
         );
 
