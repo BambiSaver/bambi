@@ -317,8 +317,10 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             fieldWithInfo.home_position.longitude = 11.490920;
             fieldWithInfo.current_position.geopos_2d.latitude = m_lastGlobalPosition.latitude;
             fieldWithInfo.current_position.geopos_2d.longitude = m_lastGlobalPosition.longitude;
-            //TODO check if altitude msg m_lastAltitude.terrain is correct
+            //TODO check if altitude msg m_lastAltitude.terrain is correct then use that as altitude over ground.
+            //if, in case of no distance sensor the information it is avaiable we could use relative altitude.
             fieldWithInfo.current_position.altitude_over_ground =  45.0f;
+
             changeState(State::COVERAGE_PATH_PLANNING);
             m_publisher.triggerPathGeneration(fieldWithInfo);
         }  else if (command == Command::GLOBAL_POSITION_UPDATE // savely ignore GPS update, because we are not tracking any position here
