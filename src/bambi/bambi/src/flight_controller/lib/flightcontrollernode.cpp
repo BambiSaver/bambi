@@ -27,6 +27,7 @@
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/PositionTarget.h>
 #include <mavros_msgs/HomePosition.h>
+#include <bambi_msgs/Trajectory.h>
 
 //#include <ros/service_client.h>
 
@@ -75,9 +76,9 @@ FlightControllerNode::FlightControllerNode(const ros::NodeHandle &nodeHandle)
 
 
 
-void FlightControllerNode::cb_trigger_coverage_flight(const bambi_msgs::Trajectory &trajectory) {
+void FlightControllerNode::cb_trigger_coverage_flight(const bambi_msgs::CoverageFlightTrigger &trajectory) {
     ROS_INFO("Flight Controller got coverage flight trigger with trajectory");
-    handleStateMachineCommand(Command::NEW_TRAJECTORY_RECEIVED, &trajectory);
+    handleStateMachineCommand(Command::COVERAGE_FLIGHT_TRIGGER_RECEIVED, &trajectory);
 }
 
 void FlightControllerNode::cb_uav_state_change(const mavros_msgs::State &msg) {
@@ -167,18 +168,23 @@ void FlightControllerNode::handleStateMachineCommand(FlightControllerNode::Comma
     m_mutex.lock();
     switch (m_state) {
     case State::READY:
-        if (command == Command::NEW_TRAJECTORY_RECEIVED) {
-            auto trajectory = static_cast<const bambi_msgs::Trajectory*>(msg);
-            m_index = 0;
-            m_rate = ros::Rate(trajectory->sample_rate);
-            m_trajectory = boost::shared_ptr<bambi_msgs::Trajectory>(new bambi_msgs::Trajectory(*trajectory));
+        if (command == Command::COVERAGE_FLIGHT_TRIGGER_RECEIVED) {
+            auto coverageFlightTrigger = static_cast<const bambi_msgs::CoverageFlightTrigger*>(msg);
 
-            // TODO check if m_lastLocalPositionPose is valid(!)
-            m_missionStartPositionTarget = createStartPositionTarget();
+            if (coverageFlightTrigger->startStop) {
+                ROS_WARN("Received a coverage flight trigger to STOP the mission, but mission wasn't even started");
+            } else {
+                m_index = 0;
+                m_rate = ros::Rate(coverageFlightTrigger->trajectory.sample_rate);
+                m_trajectory = boost::shared_ptr<bambi_msgs::Trajectory>(new bambi_msgs::Trajectory(coverageFlightTrigger->trajectory));
 
-            changeState(State::PUBLISHING_FIRST_POINTS);
-            m_biasSetpointTimer = m_nodeHandle.createTimer(ros::Duration(2.0), &FlightControllerNode::cb_bias_setpoints_timer, this, true, false);
-            m_biasSetpointTimer.start();
+                // TODO check if m_lastLocalPositionPose is valid(!)
+                m_missionStartPositionTarget = createStartPositionTarget();
+
+                changeState(State::PUBLISHING_FIRST_POINTS);
+                m_biasSetpointTimer = m_nodeHandle.createTimer(ros::Duration(2.0), &FlightControllerNode::cb_bias_setpoints_timer, this, true, false);
+                m_biasSetpointTimer.start();
+            }
         } else {
             ROS_WARN("Ignoring command %s in state READY", commandToStringMap.at(command));
         }
@@ -228,13 +234,19 @@ void FlightControllerNode::handleStateMachineCommand(FlightControllerNode::Comma
         break;
     case State::REACHED_HOME:
         // TODO: implement callback from missiontrigger which says us to stop publishing setpoints
-        ROS_WARN("Ignoring command %s in state REACHED_HOME", commandToStringMap.at(command));
-        /*
-        if (command == Command::) {
 
+        if (command == Command::COVERAGE_FLIGHT_TRIGGER_RECEIVED) {
+            auto ft = static_cast<const bambi_msgs::CoverageFlightTrigger*>(msg);
+            if (!ft->startStop) {
+                // stop to publish
+                changeState(State::READY);
+            } else {
+                // TODO maybe it makes also sense to restart from REACHED_HOME?
+                ROS_WARN("Received COVERAGE FLIGHT TRIGGER to START the mission, but mission not completed yet");
+            }
         } else {
             ROS_WARN("Ignoring command %s in state REACHED_HOME", commandToStringMap.at(command));
-        }*/
+        }
         break;
     }
     m_mutex.unlock();
@@ -287,7 +299,7 @@ const std::map<FlightControllerNode::State, const char *>  FlightControllerNode:
 };
 
 const std::map<FlightControllerNode::Command, const char *>  FlightControllerNode::commandToStringMap = {
-  { FlightControllerNode::Command::NEW_TRAJECTORY_RECEIVED, "NEW_TRAJECTORY_RECEIVED" },
+  { FlightControllerNode::Command::COVERAGE_FLIGHT_TRIGGER_RECEIVED, "COVERAGE_FLIGHT_TRIGGER_RECEIVED" },
   { FlightControllerNode::Command::TIME_TO_CHANGE_MODE, "TIME_TO_CHANGE_MODE" },
   { FlightControllerNode::Command::UAV_MODE_CHANGED_TO_OFFBOARD, "UAV_MODE_CHANGED_TO_OFFBOARD" },
   { FlightControllerNode::Command::HOVER_TRIGGER, "HOVER_TRIGGER" },

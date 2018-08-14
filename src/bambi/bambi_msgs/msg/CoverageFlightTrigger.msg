@@ -1,0 +1,2 @@
+bool startStop
+bambi_msgs/Trajectory trajectory

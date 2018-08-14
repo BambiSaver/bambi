@@ -17,6 +17,7 @@ find_package(catkin
 add_message_files(
   DIRECTORY msg
   FILES
+  CoverageFlightTrigger.msg
   DynamicFlightConstraints.msg
   Field.msg
   FieldCoverageInfo.msg

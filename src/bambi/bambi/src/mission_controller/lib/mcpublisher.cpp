@@ -45,7 +45,7 @@ MCPublisher::MCPublisher(const ros::NodeHandle &missioncontrollerNodeHandle)
     m_triggerBoundaryGenerationPublisher = m_mcNodeHandle.advertise<bambi_msgs::OrthoPhoto>("trigger_boundary", 5, false);
     m_triggerPathGenerationPublisher = m_mcNodeHandle.advertise<bambi_msgs::FieldCoverageInfo>("trigger_path_generation", 5, false);
     m_triggerTrajectoryGenerationPublisher = m_mcNodeHandle.advertise<bambi_msgs::PathWithConstraints>("trigger_trajectory_generation", 5, false);
-    m_triggerCoverageFlightPublisher = m_mcNodeHandle.advertise<bambi_msgs::Trajectory>("trigger_coverage_flight", 5, false);
+    m_triggerCoverageFlightPublisher = m_mcNodeHandle.advertise<bambi_msgs::CoverageFlightTrigger>("trigger_coverage_flight", 5, false);
     m_triggerHoverPublisher = m_mcNodeHandle.advertise<std_msgs::Bool>("trigger_hover", 5, false);
     m_hoverPositionPublisher = m_mcNodeHandle.advertise<mavros_msgs::GlobalPositionTarget>("hovering_position", 500, false);
 
@@ -118,13 +118,13 @@ bool MCPublisher::clearWPList()
 
     mavros_msgs::WaypointClear commandWPClear;
     if (!ros::service::call("/mavros/mission/clear",commandWPClear)) {
-          ROS_ERROR("Waypoint clear service cannot send wp clear message");
-          return false;
+        ROS_ERROR("Waypoint clear service cannot send wp clear message");
+        return false;
     }
 
     if (commandWPClear.response.success){
-          ROS_INFO("Waypoint list succesfully cleared");
-          return true;
+        ROS_INFO("Waypoint list succesfully cleared");
+        return true;
     }
     return false;
 
@@ -189,7 +189,7 @@ void MCPublisher::triggerTrajectoryGeneration(const bambi_msgs::PathWithConstrai
     m_triggerTrajectoryGenerationPublisher.publish(path);
 }
 
-void MCPublisher::triggerCoverageFlight(const bambi_msgs::Trajectory &trajectory) {
+void MCPublisher::triggerCoverageFlight(const bambi_msgs::CoverageFlightTrigger &trajectory) {
     m_triggerCoverageFlightPublisher.publish(trajectory);
 }
 

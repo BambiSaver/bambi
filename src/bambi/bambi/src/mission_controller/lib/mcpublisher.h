@@ -29,7 +29,8 @@
 #include <bambi_msgs/FieldCoverageInfo.h>
 #include <bambi_msgs/PathWithConstraints.h>
 #include <bambi_msgs/OrthoPhoto.h>
-#include <bambi_msgs/Trajectory.h>
+#include <bambi_msgs/CoverageFlightTrigger.h>
+
 
 #include <mavros_msgs/WaypointPush.h>
 #include <mavros_msgs/SetMode.h>
@@ -53,7 +54,7 @@ public:
     void triggerBoundaryGeneration(const bambi_msgs::OrthoPhoto&);
     void triggerPathGeneration(const bambi_msgs::FieldCoverageInfo& field);
     void triggerTrajectoryGeneration(const bambi_msgs::PathWithConstraints& path);
-    void triggerCoverageFlight(const bambi_msgs::Trajectory& trajectory);
+    void triggerCoverageFlight(const bambi_msgs::CoverageFlightTrigger& trajectory);
 
 
 private:

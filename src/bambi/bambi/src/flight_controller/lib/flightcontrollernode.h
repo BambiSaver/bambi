@@ -30,7 +30,7 @@
 #include <ros/timer.h>
 #include <std_msgs/Bool.h>
 #include <boost/shared_ptr.hpp>
-#include <bambi_msgs/Trajectory.h>
+#include <bambi_msgs/CoverageFlightTrigger.h>
 #include <mavros_msgs/GlobalPositionTarget.h>
 #include <mavros_msgs/State.h>
 #include <mavros_msgs/Altitude.h>
@@ -59,7 +59,7 @@ public:
     };
 
     enum class Command {
-        NEW_TRAJECTORY_RECEIVED,
+        COVERAGE_FLIGHT_TRIGGER_RECEIVED,
         TIME_TO_CHANGE_MODE,
         UAV_MODE_CHANGED_TO_OFFBOARD,
         HOVER_TRIGGER
@@ -67,7 +67,7 @@ public:
   
 private:
   
-    void cb_trigger_coverage_flight(const bambi_msgs::Trajectory& trajectory);
+    void cb_trigger_coverage_flight(const bambi_msgs::CoverageFlightTrigger& trajectory);
     void cb_trigger_hover(const std_msgs::Bool& hoverOn);
     void cb_hovering_position(const mavros_msgs::GlobalPositionTarget& hoveringPosition);
     void cb_uav_state_change(const mavros_msgs::State &msg);

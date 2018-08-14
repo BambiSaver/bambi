@@ -30,6 +30,9 @@
 #include <mavros_msgs/WaypointPush.h>
 #include <mavros_msgs/CommandCode.h>
 #include <mavros_msgs/SetMode.h>
+#include <bambi_msgs/CoverageFlightTrigger.h>
+
+
 using namespace bambi::missioncontroller;
 
 //#define PATH_GENERATOR_DEV_SETUP
@@ -313,8 +316,8 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             fieldWithInfo.thermal_camera_ground_footprint_height = m_missionTriggerStart.SensorFootprintMinDim;
             fieldWithInfo.thermal_camera_ground_footprint_height = m_missionTriggerStart.SensorFootprintMinDim;
             fieldWithInfo.thermal_camera_ground_footprint_width = m_missionTriggerStart.SensorFootprintMinDim;
-            fieldWithInfo.home_position.latitude = 46.452895;
-            fieldWithInfo.home_position.longitude = 11.490920;
+            fieldWithInfo.home_position.latitude = m_homeGlobalPosition.latitude;
+            fieldWithInfo.home_position.longitude = m_homeGlobalPosition.longitude;
             fieldWithInfo.current_position.geopos_2d.latitude = m_lastGlobalPosition.latitude;
             fieldWithInfo.current_position.geopos_2d.longitude = m_lastGlobalPosition.longitude;
             //TODO check if altitude msg m_lastAltitude.terrain is correct then use that as altitude over ground.
@@ -357,7 +360,9 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
         } else if (command == Command::TRAJECTORY_READY) {
             changeState(State::COVERAGE_FLIGHT);
             auto trajectory = (bambi_msgs::Trajectory*) msg;
-            m_publisher.triggerCoverageFlight(*trajectory);
+            bambi_msgs::CoverageFlightTrigger cft;
+            cft.trajectory = *trajectory;
+            m_publisher.triggerCoverageFlight(cft);
         } else if (command == Command::GLOBAL_POSITION_UPDATE // savely ignore GPS update, because we are not tracking any position here
                    || command == Command::MISSION_ITEM_REACHED // remaining MISSION_ITEM_REACHED may arrive, all OK
               ) {
@@ -371,6 +376,19 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             ROS_INFO("Mission trigger received but not handled");
         } else if (command == Command::COVERAGE_FC_REACHED_HOME) {
             ROS_INFO("We reached HOME!!!! (we could land now, don't know how to do that yet)");
+
+            mavros_msgs::SetMode commandSetMode;
+            commandSetMode.request.base_mode = 1; //stands for MAV_MODE_FLAG_CUSTOM_MODE_ENABLED
+            commandSetMode.request.custom_mode = "AUTO.LAND";
+            if(m_publisher.setMode(commandSetMode)){
+             //mission start command send (i.e change mode to AUTO.MISSION)
+                changeState(State::STARTING_PHOTO_MISSION);
+            } else {
+                // TODO RTL?
+                //Not able to change mode and start mission
+                changeState(State::READY);
+                ROS_WARN("LANDING REJECTED");
+            }
         } else if (command == Command::GLOBAL_POSITION_UPDATE // not used for now, maybe in FlightController
                ) {
              // ignore
