@@ -318,7 +318,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             fieldWithInfo.current_position.geopos_2d.latitude = m_lastGlobalPosition.latitude;
             fieldWithInfo.current_position.geopos_2d.longitude = m_lastGlobalPosition.longitude;
             //TODO check if altitude msg m_lastAltitude.terrain is correct
-            fieldWithInfo.current_position.altitude_over_ground_in_mm =  45000;
+            fieldWithInfo.current_position.altitude_over_ground =  45.0f;
             changeState(State::COVERAGE_PATH_PLANNING);
             m_publisher.triggerPathGeneration(fieldWithInfo);
         }  else if (command == Command::GLOBAL_POSITION_UPDATE // savely ignore GPS update, because we are not tracking any position here

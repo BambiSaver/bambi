@@ -446,7 +446,7 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
     // use x y z like EAST, NORTH, UP (not NED)
     auto currentPosVec = cppspline::Vector(currentPositionUTM.easting,
                                            currentPositionUTM.northing,
-                                           fieldCoverageInfo.current_position.altitude_over_ground_in_mm / 10E3 /* over 1000 to get all in METERS */
+                                           fieldCoverageInfo.current_position.altitude_over_ground /* METERS */
                                            );
 
 
@@ -531,7 +531,7 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
         // save for publishers
         bambi_msgs::GeoPositionWithRelativeAltitude bambiPoint;
         // use only scanning altitude for now TODO
-        bambiPoint.altitude_over_ground_in_mm = std::round(v.z * 10E3);
+        bambiPoint.altitude_over_ground = std::round(v.z);
         bambiPoint.geopos_2d.latitude = geoPoint.latitude;
         bambiPoint.geopos_2d.longitude = geoPoint.longitude;
 
