@@ -26,19 +26,18 @@
 
 #include <ros/ros.h>
 #include "bambi_msgs/PathWithConstraints.h"
-#include <boost/geometry/geometries/point_xy.hpp>
 #include <geographic_msgs/GeoPoint.h>
 #include <mavros_msgs/HomePosition.h>
 #include <mavros_msgs/PositionTarget.h>
+#include <boost/shared_ptr.hpp>
 
 
-typedef struct PointXYZ_relAltitude {
+typedef struct Point3dRelAltitude {
     double x;
     double y;
-    uint32_t alt;
-} PointXYZ_relAltitude;
+    float alt;
+} Point3dRelAltitude;
 
-typedef boost::geometry::model::d2::point_xy<double> point_xy_t;
 
 namespace bambi {
 namespace trajectory_generator{
@@ -55,7 +54,7 @@ private:
     void generateTrajectory();
     void convertTrajectoryXYToGeoPoint(uint8_t zone, char band);
     void transformTrajectoryToLocalENU();
-    double dist2D(const PointXYZ_relAltitude& p1,const PointXYZ_relAltitude& p2);
+    double dist2D(const Point3dRelAltitude& p1,const Point3dRelAltitude& p2);
     ros::NodeHandle m_nodeHandle;
     ros::Publisher  m_publisherTrajectory;
     ros::Subscriber m_subscriberTriggerTrajectoryGeneration;
@@ -65,15 +64,9 @@ private:
     float m_setPointRate;
 
     mavros_msgs::HomePosition m_homePosition;
-    bool m_homePositionReceived;
 
-    std::vector<PointXYZ_relAltitude> m_pathXYZ_relAltitude;
-
-    std::vector<mavros_msgs::PositionTarget> m_positionTrajectoryENU;
-    std::vector<point_xy_t> m_path_xy;
-    std::vector<point_xy_t> m_positionTrajectoryXY;
-
-    std::vector<geographic_msgs::GeoPoint> m_positionTrajectoryGeo;
+    boost::shared_ptr<std::vector<Point3dRelAltitude>> m_pPathXYZ_relAltitude;
+    boost::shared_ptr<std::vector<mavros_msgs::PositionTarget>> m_pPositionTrajectoryENU;
 };
 }
 }

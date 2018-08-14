@@ -35,15 +35,8 @@
 
 using namespace bambi::missioncontroller;
 
-//#define PATH_GENERATOR_DEV_SETUP
-
-
 StateMachine::StateMachine(const MCPublisher &publisher, rosTimerProviderFunction armTimerProvider) :
-#ifdef PATH_GENERATOR_DEV_SETUP
-    m_state(State::GENERATING_BOUNDARY),
-#else
     m_state(State::INIT),
-#endif
     m_publisher(publisher),
     m_armTimerProviderFunction(armTimerProvider),
     m_lastUavLandedState(mavros_msgs::ExtendedState::LANDED_STATE_UNDEFINED)
@@ -171,6 +164,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
                 if (m_publisher.arm()){
                     ROS_INFO("Copter ARMED, sending takeoff message (altitude= %.2fm)", m_missionTriggerStart.altitudeTakeoff);
                     //save home position before sending takeoff request
+                    m_homeGlobalPosition = m_lastGlobalPosition;
                     float globalAltitudeTO = m_lastAltitude.amsl + m_missionTriggerStart.altitudeTakeoff;
                     if (m_publisher.takeOff(globalAltitudeTO)) {
                         changeState(State::TAKING_OFF);
@@ -201,7 +195,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             ROS_INFO("Mission trigger received but not handled");
         } else if (command == Command::GLOBAL_POSITION_UPDATE) {
             // TODO tracking height to pass to next
-            if (m_lastAltitude.relative < 0.1f){
+            if (m_lastAltitude.relative > m_missionTriggerStart.altitudeTakeoff-0.1f){
                     //takeoff target altitude reached
                     if(m_publisher.clearWPList()){
 
@@ -339,13 +333,14 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             ROS_INFO("Mission trigger received but not handled");
         } else if (command == Command::COVERAGE_PATH_READY) {
             changeState(State::GENERATING_TRAJECTORY);
-            bambi_msgs::PathWithConstraints path;
-            path.path = *((bambi_msgs::Path*)msg);
+            ROS_INFO("INVOKING TRAJECTORY GENERATOR");
+            bambi_msgs::PathWithConstraints pathWithConstraints;
+            pathWithConstraints.path = *((bambi_msgs::Path*)msg);
 
             // TODO get from m_missionTriggerStart (?)
-            path.flight_constraints.max_velocity = 5.0;
-            path.flight_constraints.max_acceleration = 15.0;
-            m_publisher.triggerTrajectoryGeneration(path);
+            pathWithConstraints.flight_constraints.max_velocity = 8.0;
+            pathWithConstraints.flight_constraints.max_acceleration = 15.0;
+            m_publisher.triggerTrajectoryGeneration(pathWithConstraints);
         } else if (command == Command::GLOBAL_POSITION_UPDATE // savely ignore GPS update, because we are not tracking any position here
                    || command == Command::MISSION_ITEM_REACHED // remaining MISSION_ITEM_REACHED may arrive, all OK
               ) {
@@ -414,7 +409,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
 }
 
 void StateMachine::changeState(StateMachine::State newState) {
-  ROS_INFO("Changing state from %s to %s", stateToStringMap.at(m_state), stateToStringMap.at(newState));
+  ROS_INFO("STATE MACHINE STATE CHANGE %s ==> %s", stateToStringMap.at(m_state), stateToStringMap.at(newState));
   m_state = newState;
 }
 

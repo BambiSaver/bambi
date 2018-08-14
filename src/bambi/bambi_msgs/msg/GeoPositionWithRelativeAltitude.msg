@@ -1,2 +1,2 @@
 bambi_msgs/GeoPosition2D geopos_2d
-uint32 altitude_over_ground
+float32 altitude_over_ground

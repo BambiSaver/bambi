@@ -27,6 +27,8 @@
 
 
 using namespace bambi::trajectory_generator;
+
+
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "trajectory_generator");

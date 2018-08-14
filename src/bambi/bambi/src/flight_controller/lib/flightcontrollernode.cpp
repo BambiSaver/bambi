@@ -141,6 +141,9 @@ void FlightControllerNode::spin() {
             ++m_index;
             if (m_index < m_trajectory->setpoints.size()) {
                 m_trajectory->setpoints[m_index].header.stamp = ros::Time::now();
+
+
+
                 m_publisherSetPosition.publish(m_trajectory->setpoints[m_index]);
             } else {
                 // reached home
@@ -159,6 +162,7 @@ void FlightControllerNode::spin() {
             m_trajectory->setpoints[m_index].header.stamp = ros::Time::now();
             m_publisherSetPosition.publish(m_trajectory->setpoints[m_index]);
         }
+        ros::spinOnce();
         m_rate.sleep();
     }
     spinner.stop();
