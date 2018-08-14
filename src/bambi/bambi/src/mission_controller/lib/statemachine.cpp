@@ -42,8 +42,9 @@ StateMachine::StateMachine(const MCPublisher &publisher, rosTimerProviderFunctio
     m_state(State::INIT),
 #endif
     m_publisher(publisher),
-    m_lastUavLandedState(mavros_msgs::ExtendedState::LANDED_STATE_UNDEFINED),
-    m_armTimerProviderFunction(armTimerProvider) {
+    m_armTimerProviderFunction(armTimerProvider),
+    m_lastUavLandedState(mavros_msgs::ExtendedState::LANDED_STATE_UNDEFINED)
+{
 
 
 }
@@ -165,10 +166,9 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
         } else if (command == Command::TRY_ARM_TIMER_SHOT) {
             if(m_armingTries < MAX_ARMING_TRIES){
                 if (m_publisher.arm()){
-                    ROS_INFO("Copter ARMED, sending takeoff message (altitude= %.2fm)", m_missionTriggerStart.altitude);
+                    ROS_INFO("Copter ARMED, sending takeoff message (altitude= %.2fm)", m_missionTriggerStart.altitudeTakeoff);
                     //save home position before sending takeoff request
-                    m_homeGlobalPosition = m_lastGlobalPosition;
-                    float globalAltitudeTO = static_cast<float>(m_lastGlobalPosition.altitude) + m_missionTriggerStart.altitude;
+                    float globalAltitudeTO = m_lastAltitude.amsl + m_missionTriggerStart.altitudeTakeoff;
                     if (m_publisher.takeOff(globalAltitudeTO)) {
                         changeState(State::TAKING_OFF);
                     } else {
@@ -198,21 +198,18 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             ROS_INFO("Mission trigger received but not handled");
         } else if (command == Command::GLOBAL_POSITION_UPDATE) {
             // TODO tracking height to pass to next
-            float lastRelativeAltitude = static_cast<float>(m_lastGlobalPosition.altitude - m_homeGlobalPosition.altitude);
-
-            if (std::abs(lastRelativeAltitude-m_missionTriggerStart.altitude)< 0.1f){
+            if (m_lastAltitude.relative < 0.1f){
                     //takeoff target altitude reached
                     if(m_publisher.clearWPList()){
 
                         mavros_msgs::Waypoint photoWP;
                         photoWP.command = mavros_msgs::CommandCode::NAV_WAYPOINT;
                         photoWP.is_current = true;
-                        photoWP.frame = mavros_msgs::Waypoint::FRAME_GLOBAL_REL_ALT;
-                        photoWP.x_lat = m_missionTriggerStart.latitude;
-                        photoWP.y_long = m_missionTriggerStart.longitude;
-                        // TODO photoaltitude != m_missionTriggerStart.altitude --> use 70m for now
-                        // static_cast<double>(m_missionTriggerStart.altitude);
-                        photoWP.z_alt = 45.0; //relative altitude
+                        photoWP.frame = mavros_msgs::Waypoint::FRAME_GLOBAL;
+                        photoWP.x_lat = m_missionTriggerStart.latitudeOrthophoto;
+                        photoWP.y_long = m_missionTriggerStart.longitudeOrthophoto;
+                        //Altitude should be expressed in AMSL (meters)
+                        photoWP.z_alt = m_missionTriggerStart.altitudeOrthophoto;
 
                         mavros_msgs::WaypointPush listWP;
                         listWP.request.waypoints.push_back(photoWP);
@@ -268,7 +265,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             ROS_INFO("Mission trigger received but not handled");
         } else if (command == Command::MISSION_ITEM_REACHED){
             //we have reached the mission starting point
-            //TOD: SWITCH MODE TO LOITER (potresti avere problemi nel setMode, vedi https://github.com/mavlink/mavros/pull/811)
+            //???TODO???: SWITCH MODE TO LOITER (potresti avere problemi nel setMode, vedi https://github.com/mavlink/mavros/pull/811)
 
 
             changeState(State::TAKING_ORTHO_PHOTO);
@@ -276,7 +273,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
 
 
         } else if (command == Command::GLOBAL_POSITION_UPDATE) {
-            // savely ignore GPS update, because we are waiting for MISSION_ITEM_REACHED
+            // silently ignore GPS update, because we are waiting for MISSION_ITEM_REACHED
         } else {
             ROS_WARN("Ignoring command %s in state REACHING_MISSION_START_POINT", commandToStringMap.at(command));
         }
@@ -306,16 +303,22 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             bambi_msgs::FieldCoverageInfo fieldWithInfo;
             fieldWithInfo.field = *(bambi_msgs::Field*)msg;
 
+
             // TODO get this info from m_missionTriggerStart
-            fieldWithInfo.relative_altitude_scanning_in_mm = 8000;
-            fieldWithInfo.relative_altitude_returning_in_mm = 15000;
-            fieldWithInfo.thermal_camera_ground_footprint_height = 8.0f;
-            fieldWithInfo.thermal_camera_ground_footprint_width = 8.0f;
+
+
+            fieldWithInfo.relative_altitude_scanning = m_missionTriggerStart.altitudeScanning;
+            fieldWithInfo.relative_altitude_returning = m_missionTriggerStart.altitudeTakeoff;
+
+            fieldWithInfo.thermal_camera_ground_footprint_height = m_missionTriggerStart.SensorFootprintMinDim;
+            fieldWithInfo.thermal_camera_ground_footprint_height = m_missionTriggerStart.SensorFootprintMinDim;
+            fieldWithInfo.thermal_camera_ground_footprint_width = m_missionTriggerStart.SensorFootprintMinDim;
             fieldWithInfo.home_position.latitude = 46.452895;
             fieldWithInfo.home_position.longitude = 11.490920;
-            fieldWithInfo.current_position.geopos_2d.latitude = 46.453066;
-            fieldWithInfo.current_position.geopos_2d.longitude = 11.492082;
-            fieldWithInfo.current_position.altitude_over_ground_in_mm = 45000;
+            fieldWithInfo.current_position.geopos_2d.latitude = m_lastGlobalPosition.latitude;
+            fieldWithInfo.current_position.geopos_2d.longitude = m_lastGlobalPosition.longitude;
+            //TODO check if altitude msg m_lastAltitude.terrain is correct
+            fieldWithInfo.current_position.altitude_over_ground_in_mm =  45000;
             changeState(State::COVERAGE_PATH_PLANNING);
             m_publisher.triggerPathGeneration(fieldWithInfo);
         }  else if (command == Command::GLOBAL_POSITION_UPDATE // savely ignore GPS update, because we are not tracking any position here
@@ -333,6 +336,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             changeState(State::GENERATING_TRAJECTORY);
             bambi_msgs::PathWithConstraints path;
             path.path = *((bambi_msgs::Path*)msg);
+
             // TODO get from m_missionTriggerStart (?)
             path.flight_constraints.max_velocity = 5.0;
             path.flight_constraints.max_acceleration = 15.0;

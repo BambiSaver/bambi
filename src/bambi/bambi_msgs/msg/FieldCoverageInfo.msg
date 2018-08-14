@@ -1,9 +1,9 @@
 float32 thermal_camera_ground_footprint_width
 float32 thermal_camera_ground_footprint_height
 # Scanning Altitude
-uint32 relative_altitude_scanning_in_mm
+float32 relative_altitude_scanning
 # Altitude to use to get back home
-uint32 relative_altitude_returning_in_mm
+float32 relative_altitude_returning
 # both positions may be outside of the field borders
 bambi_msgs/GeoPositionWithRelativeAltitude current_position
 bambi_msgs/GeoPosition2D home_position

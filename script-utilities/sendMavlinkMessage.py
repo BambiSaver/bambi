@@ -24,9 +24,16 @@ master.mav.command_long_send(
 #    master.target_component,
     240,
 #    mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
-    2720,
+	2720,
     0,
-    1, 46.453072, 11.492048, 10, 0, 0, 0);
+    1.0,				#mission startStop
+    10.0,				#TakeOff altitude in meters above home position
+    46.453072,			#Ortophoto latitude
+    11.492048,			#Orthophoto longitude
+    1494.0,				#Orthophoto altitude in meter AMSL 
+    40.0,				#Scanning altitude in meter above the ground (terrain altitude)									
+    8.0					#Thermal camera footprint min dimension
+        );
 
 
 # Check ACK

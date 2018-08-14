@@ -191,8 +191,8 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
 
 
     ROS_INFO("Got field coverage info, with a path of %d coordinates, flight heights (%.1f, %.1f) and sensor footprint %.1f x %.1f"
-             , static_cast<int>(fieldCoverageInfo.field.boundary_path.size()), fieldCoverageInfo.relative_altitude_returning_in_mm / 1E3
-             , fieldCoverageInfo.relative_altitude_scanning_in_mm / 1E3, fieldCoverageInfo.thermal_camera_ground_footprint_width
+             , static_cast<int>(fieldCoverageInfo.field.boundary_path.size()), fieldCoverageInfo.relative_altitude_returning / 1E3
+             , fieldCoverageInfo.relative_altitude_scanning, fieldCoverageInfo.thermal_camera_ground_footprint_width
              , fieldCoverageInfo.thermal_camera_ground_footprint_height);
 
     //std::vector<geodesy::UTMPoint> utmPoints;
@@ -460,7 +460,7 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
     for (auto p : trivialPointQueue) {
         xyzPath.push_back(cppspline::Vector(p.easting,
                                             p.northing,
-                                            fieldCoverageInfo.relative_altitude_scanning_in_mm / 10E3 /* over 1000 to get all in METERS */
+                                            fieldCoverageInfo.relative_altitude_scanning /* in meters*/
                                             ));
     }
 
@@ -469,12 +469,12 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
 
     auto lastPosVec = cppspline::Vector(xyzPath.back().x,
                                         xyzPath.back().y,
-                                        fieldCoverageInfo.relative_altitude_returning_in_mm / 10E3 /* over 1000 to get all in METERS */
+                                        fieldCoverageInfo.relative_altitude_returning /*METERS */
                                         );
 
     auto homePosVec = cppspline::Vector(homePositionUTM.easting,
                                         homePositionUTM.northing,
-                                        fieldCoverageInfo.relative_altitude_returning_in_mm / 10E3 /* over 1000 to get all in METERS */
+                                        fieldCoverageInfo.relative_altitude_returning /*METERS */
                                         );
 
     xyzPath.push_back(lastPosVec);
