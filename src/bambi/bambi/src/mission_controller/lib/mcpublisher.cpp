@@ -196,7 +196,7 @@ void MCPublisher::triggerCoverageFlight(const bambi_msgs::CoverageFlightTrigger 
 void MCPublisher::sendStatusText(const std::string &text, mavros_msgs::StatusText::_severity_type severity)
 {
     std::string msg = text;
-    msg.resize(50);
+    msg.resize(49);
     mavros_msgs::StatusText statusText;
     statusText.severity = severity;
     statusText.text = text;
