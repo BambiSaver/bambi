@@ -467,7 +467,16 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
     case State::MISSION_CANCELLING_RTL:
         if (command == Command::MISSIONTRIGGER) {
             bambiWarn("Mission Aborted RTL now!!!");
-
+            mavros_msgs::SetMode commandSetMode;
+            commandSetMode.request.base_mode = 1; //stands for MAV_MODE_FLAG_CUSTOM_MODE_ENABLED
+            commandSetMode.request.custom_mode = "AUTO.RTL";
+            if(m_publisher.setMode(commandSetMode)){
+                //RTL command send (i.e change mode to AUTO.RTL)
+                changeState(State::READY);
+            } else{
+                bambiError("!!! CANT RTL, USE RC PLZ!!!");
+                //Not able to change mode and start mission
+            }
 
             ROS_INFO("Mission trigger received but not handled");
         } else {
