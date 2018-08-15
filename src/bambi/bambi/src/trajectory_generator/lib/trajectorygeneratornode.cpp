@@ -94,10 +94,24 @@ void TrajectoryGeneratorNode::cb_update_home_position(const mavros_msgs::HomePos
 
 void TrajectoryGeneratorNode::generateTrajectory()
 {
+    // TODO make SAVE for EMPTY m_pPathXYZ ?
     m_pPositionTrajectoryENU = boost::shared_ptr<std::vector<mavros_msgs::PositionTarget>>(new std::vector<mavros_msgs::PositionTarget>());
 
-    // reserve AT LEAST the same size
-    m_pPositionTrajectoryENU->reserve(m_pPathXYZ_relAltitude->size());
+
+    double totalDist = 0.0;
+
+    for (auto i = m_pPathXYZ_relAltitude->cbegin() + 1; i < m_pPathXYZ_relAltitude->cend(); ++i) {
+        totalDist += dist2D(*(i-1), *i);
+    }
+
+    double distanceBetweenAPairOfSamples = static_cast<double>(m_maxVel) / m_setPointRate;
+
+    auto numberOfElements = std::lround(totalDist / distanceBetweenAPairOfSamples);
+
+    ROS_INFO("Path length = %.2f, to follow at %.2fm/s so we're trying to generate %ld samples", totalDist, m_maxVel, numberOfElements);
+
+    // reserve AT LEAST numberOfElements
+    m_pPositionTrajectoryENU->reserve(numberOfElements);
 
     //prepare PositionTarget message
     mavros_msgs::PositionTarget posTargetLocal;
@@ -107,78 +121,64 @@ void TrajectoryGeneratorNode::generateTrajectory()
             mavros_msgs::PositionTarget::IGNORE_AFZ |
             mavros_msgs::PositionTarget::IGNORE_YAW ;
 
-    bool lastElementReached = false;
-    long N;
-    size_t i = 0;
-    size_t j = 0;
-    size_t pathXYZSize = m_pPathXYZ_relAltitude->size();
 
-    double totalDist = 0.0;
+    double residualDistFromPreviousSegment = 0.0;
+    auto i = m_pPathXYZ_relAltitude->cbegin();
 
-    while(i < pathXYZSize && !lastElementReached){
-        j = i;
-        N = 0;
-        do{
+    // insert first point
+    posTargetLocal.position.x = i->x;
+    posTargetLocal.position.y = i->y;
+    posTargetLocal.position.z = i->alt;
+    m_pPositionTrajectoryENU->push_back(posTargetLocal);
+
+    bool reachedEnd = false;
+    while (!reachedEnd) {
+        auto j = i;
+
+        double distanceBetweenChosenSegmentsWithResidual;
+        do {
             ++j;
-
-            double dist = dist2D(m_pPathXYZ_relAltitude->at(i), m_pPathXYZ_relAltitude->at(j));
-
-            //N= number of generated setpoint in the current segment
-            N = static_cast<int>(std::floor(m_setPointRate* dist/(m_maxVel)));
-
-
-            if (j >= pathXYZSize - 1){
-                lastElementReached = true;
+            if (j >= m_pPathXYZ_relAltitude->cend()) {
+                // reached end;
+                reachedEnd = true;
+                break;
             }
-        //if we have no setpoint in the current segment we compute the distance to the next provided point
-        }while(N <= 0 && !lastElementReached);
+            distanceBetweenChosenSegmentsWithResidual = residualDistFromPreviousSegment + dist2D(*i, *j);
+        } while (distanceBetweenChosenSegmentsWithResidual < distanceBetweenAPairOfSamples);
 
-        totalDist += dist2D(m_pPathXYZ_relAltitude->at(i), m_pPathXYZ_relAltitude->at(j));
 
-        if ( N==1 ){
-            if (j >= pathXYZSize) {
-                ROS_WARN("CHE BOTTA VEZ");
-            }
-            //if we have only one setpoint for the current segment we send the last poit of the segment
-            posTargetLocal.position.x = m_pPathXYZ_relAltitude->at(j).x;
-            posTargetLocal.position.y = m_pPathXYZ_relAltitude->at(j).y;
-            posTargetLocal.position.z = m_pPathXYZ_relAltitude->at(j).alt;
-            m_pPositionTrajectoryENU->push_back(posTargetLocal);
-        }else{
-            for (size_t k = 0; k < N; ++k){
-                //if we want N setpoint we must divide the segment in N-1 parts
-                double t = k/(N-1);
+        if (!reachedEnd) {
+            // We've got to make N samples
+            int N = static_cast<int>(std::floor(distanceBetweenChosenSegmentsWithResidual/distanceBetweenAPairOfSamples));
+            Point3dRelAltitude unitDirectionVector;
+            unitDirectionVector.x = (j->x - i->x) / dist2D(*i, *j);
+            unitDirectionVector.y = (j->y - i->y) / dist2D(*i, *j);
+            // N.B.: altitude is treated differently: we don't make residual considerations,
+            // because the ground speed is limited, not the speed in 3D --> we're using dist2D()
+            unitDirectionVector.alt = (j->alt - i->alt) / N;
 
-                if (i >= pathXYZSize || j >= pathXYZSize) {
-                    ROS_WARN("CHE BOTTA VEZ");
-                }
-
-                posTargetLocal.position.x = m_pPathXYZ_relAltitude->at(i).x * (1-t) + m_pPathXYZ_relAltitude->at(j).x * t;
-                posTargetLocal.position.y = m_pPathXYZ_relAltitude->at(i).y * (1-t) + m_pPathXYZ_relAltitude->at(j).y * t;
-                posTargetLocal.position.z = m_pPathXYZ_relAltitude->at(i).alt * (1-t) + m_pPathXYZ_relAltitude->at(j).alt *t;
+            for (int k = 0; k < N; ++k) {
+                posTargetLocal.position.x = i->x + ((k+1)*distanceBetweenAPairOfSamples - residualDistFromPreviousSegment) * unitDirectionVector.x;
+                posTargetLocal.position.y = i->y + ((k+1)*distanceBetweenAPairOfSamples - residualDistFromPreviousSegment) * unitDirectionVector.y;
+                posTargetLocal.position.z = i->alt + k * unitDirectionVector.alt;
                 m_pPositionTrajectoryENU->push_back(posTargetLocal);
             }
 
+            residualDistFromPreviousSegment = dist2D(
+                    Point3dRelAltitude(m_pPositionTrajectoryENU->back().position.x, m_pPositionTrajectoryENU->back().position.y), *j);
+            i = j;
         }
-
-        i=j;
-
-    }
-    if(N <= 0 && lastElementReached){
-
-        posTargetLocal.position.x = m_pPathXYZ_relAltitude->back().x;
-        posTargetLocal.position.y = m_pPathXYZ_relAltitude->back().y;
-        posTargetLocal.position.z = m_pPathXYZ_relAltitude->back().alt;
-
-        m_pPositionTrajectoryENU->push_back(posTargetLocal);
     }
 
 
-    ROS_INFO("%.2f / %.2f * %.2f = %.2f", totalDist, m_maxVel, m_setPointRate, std::floor(totalDist / m_maxVel * m_setPointRate));
+    // insert last point
+    posTargetLocal.position.x = m_pPathXYZ_relAltitude->back().x;
+    posTargetLocal.position.y = m_pPathXYZ_relAltitude->back().y;
+    posTargetLocal.position.z = m_pPathXYZ_relAltitude->back().alt;
+    m_pPositionTrajectoryENU->push_back(posTargetLocal);
 
-    ROS_INFO("Path length = %.2f", totalDist);
 
-    ROS_INFO("GOT MANY POINTS: %d", static_cast<int>(m_pPositionTrajectoryENU->size()));
+    ROS_INFO("GENERATED %zd SAMPLES to be used at a frequency of %.1fHz", m_pPositionTrajectoryENU->size(), m_setPointRate);
 }
 
 

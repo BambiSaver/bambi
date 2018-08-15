@@ -33,6 +33,14 @@
 
 
 typedef struct Point3dRelAltitude {
+
+    Point3dRelAltitude() = default;
+
+    Point3dRelAltitude(double x1, double y1)
+        : x(x1)
+        , y(y1) {
+    }
+
     double x;
     double y;
     float alt;
