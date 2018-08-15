@@ -225,6 +225,9 @@ void FlightControllerNode::handleStateMachineCommand(FlightControllerNode::Comma
     case State::FLYING:
         if (command == Command::HOVER_TRIGGER) {
             ROS_WARN("Got hover trigger, DON'T KNOW WHAT TO DO NOW [IMPLEMENT ME]");
+        } else if (command == Command::UAV_MODE_CHANGED_TO_OFFBOARD // savely ignore, not waiting for this
+                   ) {
+            // ignore
         } else {
             ROS_WARN("Ignoring command %s in state FLYING", commandToStringMap.at(command));
         }

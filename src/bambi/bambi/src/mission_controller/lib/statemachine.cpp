@@ -376,8 +376,12 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             commandSetMode.request.base_mode = 1; //stands for MAV_MODE_FLAG_CUSTOM_MODE_ENABLED
             commandSetMode.request.custom_mode = "AUTO.LAND";
             if(m_publisher.setMode(commandSetMode)){
-             //mission start command send (i.e change mode to AUTO.MISSION)
-                changeState(State::STARTING_PHOTO_MISSION);
+                // say to flight_controller to stop publishing setpoints
+                bambi_msgs::CoverageFlightTrigger ft;
+                ft.startStop = false;
+                m_publisher.triggerCoverageFlight(ft);
+                //mission start command send (i.e change mode to AUTO.MISSION)
+                changeState(State::LANDING);
             } else {
                 // TODO RTL?
                 //Not able to change mode and start mission
@@ -385,15 +389,24 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
                 ROS_WARN("LANDING REJECTED");
             }
         } else if (command == Command::GLOBAL_POSITION_UPDATE // not used for now, maybe in FlightController
-               ) {
-             // ignore
-         }  else {
+                    ) {
+            // ignore
+        } else {
             ROS_WARN("Ignoring command %s in state COVERAGE_FLIGHT", commandToStringMap.at(command));
         }
         break;
     case State::LANDING:
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
+        } else if (command == Command::LANDED_STATE_UPDATE) {
+            // auto extendedState = static_cast<mavros_msgs::ExtendedState*>(msg); NOT NECESSARY BECAUSE WE HAVE IT IN MEMBER
+            if (m_lastUavLandedState == mavros_msgs::ExtendedState::LANDED_STATE_ON_GROUND) {
+                ROS_INFO("Successfully landed(!)");
+                changeState(State::READY);
+            }
+        } else if (command == Command::GLOBAL_POSITION_UPDATE // not used for now, maybe in FlightController
+                   ) {
+           // ignore
         } else {
             ROS_WARN("Ignoring command %s in state LANDING", commandToStringMap.at(command));
         }
