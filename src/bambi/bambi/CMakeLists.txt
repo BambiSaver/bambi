@@ -86,6 +86,7 @@ install(PROGRAMS
    scripts/optical_cam/optical_cam
    scripts/boundary_generator/boundary_generator
    scripts/kml_generator/kml_generator
+   scripts/terrain_data_provider/terrain_data_provider
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

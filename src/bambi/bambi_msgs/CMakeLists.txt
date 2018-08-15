@@ -27,10 +27,14 @@ add_message_files(
   Path.msg
   PathWithConstraints.msg
   Trajectory.msg
+  TerrainData.msg
 )
 
-#add_service_files(
-#)
+add_service_files(
+    DIRECTORY srv
+    FILES
+    TerrainDataProvider.srv
+)
 
 #generate_messages(DEPENDENCIES geometry_msgs sensor_msgs geographic_msgs std_msgs)
 generate_messages(DEPENDENCIES geographic_msgs mavros_msgs std_msgs)

@@ -33,10 +33,17 @@
 #include <bambi_msgs/CoverageFlightTrigger.h>
 #include <mavros_msgs/StatusText.h>
 
+#define PATH_PLANNER_DEBUG_SETUP
+
+
 using namespace bambi::missioncontroller;
 
 StateMachine::StateMachine(const MCPublisher &publisher, rosTimerProviderFunction armTimerProvider,rosTimerProviderFunction changeModeTimerProvider) :
+#ifdef PATH_PLANNER_DEBUG_SETUP
+    m_state(State::GENERATING_BOUNDARY),
+#else
     m_state(State::INIT),
+#endif
     m_publisher(publisher),
     m_armTimerProviderFunction(armTimerProvider),
     m_changeModeTimerProviderFunction(changeModeTimerProvider),
@@ -363,6 +370,16 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             fieldWithInfo.current_position.geopos_2d.latitude = m_lastGlobalPosition.latitude;
             fieldWithInfo.current_position.geopos_2d.longitude = m_lastGlobalPosition.longitude;
 
+#ifdef PATH_PLANNER_DEBUG_SETUP
+            fieldWithInfo.current_position.altitude_over_ground = 45000;
+            fieldWithInfo.current_position.geopos_2d.latitude = 46.453072;
+            fieldWithInfo.current_position.geopos_2d.longitude = 11.492048;
+            fieldWithInfo.home_position.latitude = 46.452895;
+            fieldWithInfo.home_position.longitude = 11.490920;
+            fieldWithInfo.thermal_camera_ground_footprint_height = 8.0;
+            fieldWithInfo.thermal_camera_ground_footprint_width = 8.0;
+#endif
+
             changeState(State::COVERAGE_PATH_PLANNING);
             m_publisher.triggerPathGeneration(fieldWithInfo);
         }  else if (command == Command::GLOBAL_POSITION_UPDATE // savely ignore GPS update, because we are not tracking any position here
@@ -467,16 +484,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
     case State::MISSION_CANCELLING_RTL:
         if (command == Command::MISSIONTRIGGER) {
             bambiWarn("Mission Aborted RTL now!!!");
-            mavros_msgs::SetMode commandSetMode;
-            commandSetMode.request.base_mode = 1; //stands for MAV_MODE_FLAG_CUSTOM_MODE_ENABLED
-            commandSetMode.request.custom_mode = "AUTO.RTL";
-            if(m_publisher.setMode(commandSetMode)){
-                //RTL command send (i.e change mode to AUTO.RTL)
-                changeState(State::READY);
-            } else{
-                bambiError("!!! CANT RTL, USE RC PLZ!!!");
-                //Not able to change mode and start mission
-            }
+
 
             ROS_INFO("Mission trigger received but not handled");
         } else {

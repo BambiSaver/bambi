@@ -1,0 +1,152 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import roslib
+roslib.load_manifest('bambi_msgs')
+import rospy
+import sys
+import os
+
+from bambi_msgs.msg import GeoPosition2D
+from bambi_msgs.msg import TerrainData
+from bambi_msgs.srv import TerrainDataProvider
+from bambi_msgs.srv import TerrainDataProviderRequest
+from bambi_msgs.srv import TerrainDataProviderResponse
+#from std_msgs.msg import Bool
+
+import simplejson
+import urllib
+
+ELEVATION_BASE_URL = 'https://maps.google.com/maps/api/elevation/json'
+
+
+class TerrainDataProviderNode():
+
+    def __init__(self):
+        #self.m_orthoPhotoPublisher = rospy.Publisher("~ortho_photo_ready",
+        #                                            OrthoPhoto, queue_size=5)
+
+        #rospy.init_node('add_two_ints_server')
+        self.m_service = rospy.Service('terrain_data_provider', TerrainDataProvider, self.cb_handle_request)
+        
+        #rospy.Subscriber('/bambi/terrain_data_provider/request', Bool, self.cb_handle_request)
+
+        rospy.spin()
+
+
+    def cb_handle_request(self, TerrainDataProviderRequest):
+        # Set the message to publish as our custom message.
+        #msg = OrthoPhoto()
+        rospy.loginfo("GOT TERRAIN DATA REQUEST");
+
+        
+        key = os.environ.get('GOOGLE_API_KEY')
+
+        locationsString = ''
+
+
+        l = len(TerrainDataProviderRequest.points)
+
+        resp = {
+            'terrainData': list()
+        }
+
+        MAX = 150
+
+        numberOfRequests = l/MAX + 1
+
+        rospy.loginfo("Gonna make " + str(numberOfRequests) + " requests to Google")
+
+        for k in range (0, numberOfRequests):
+            rospy.loginfo("Making " + str(k+1) + ". reqeust from " + str(MAX*k) + " to " + str(min(MAX*(k+1),l)))
+            locationsString = ''
+            for i in range (MAX*k, min(MAX*(k+1),l)):
+                locationsString += '|' + str(TerrainDataProviderRequest.points[i].latitude) + ',' + str(TerrainDataProviderRequest.points[i].longitude);
+            elevations = self.getElevation(locationsString[1:], key)
+
+            for elevation in elevations:
+                t = TerrainData()
+                t.altitudeInMeters = float(elevation)
+                #rospy.loginfo(str(t.altitudeInMeters))
+                resp['terrainData'].append(t)
+        
+        return resp
+
+        
+        # Initialize message variables.
+        #msg.filenameWithFullPath = os.path.expandvars('$BAMBI_OWNCLOUD_HOME/sample-border-1.kml')
+        #self.m_orthoPhotoPublisher.publish(msg)
+
+    def getElevation(self, locations, key):
+        elvtn_args = {
+            'key': key,
+            'locations': locations
+        }
+
+        #rospy.loginfo("ASKING GOOGLE FOR ELEVATION OF " + locations)
+
+        url = ELEVATION_BASE_URL + '?' + urllib.urlencode(elvtn_args)
+        #req =  urllib.urllib.urlopen(url);
+
+
+        response = {
+            'results': list()
+        }
+
+
+        #request 
+
+        #with urllib.urlopen(url) as response:
+
+        req = urllib.urlopen(url)
+        #txt = response.read()
+
+        try:
+            response = simplejson.load(req)
+        except ValueError:  # includes simplejson.decoder.JSONDecodeError
+            rospy.loginfo("JSON PARSING FAILED URL WAS: " + url)
+            #rospy.loginfo("GOT RESPONSE: " + txt)
+        #rospy.loginfo("GOT RESPONSE: " + response)
+
+        # Create a dictionary for each results[] object
+        elevationArray = []
+        for resultset in response['results']:
+            elevationArray.append(resultset['elevation'])
+        return elevationArray
+
+
+
+# Main function.
+if __name__ == '__main__':
+    # Initialize the node and name it.
+    rospy.init_node('terrain_data_provider')
+
+    rospy.loginfo("TerrainDataProvider STARTUP")
+    # Go to class functions that do all the heavy lifting. Do error checking.
+    try:
+        orthoPhotoNode = TerrainDataProviderNode()
+    except rospy.ROSInterruptException: pass
+
+
+# if __name__ == '__main__':
+        
+#     print("")
+#     print("Elevation Chart Maker 1.0")
+#     print("")
+#     print("The following service calculates elevation data between two points")
+#     print("and builds an HTTP chart using Google's Elevation service and Chart API")
+#     print("")
+
+#     # Collect the Latitude/Longitude input string
+#     # from the user
+#     startStr = raw_input('Enter the start latitude,longitude value (default Mt. Whitney) --> ').replace(' ','')
+#     if not startStr:
+#       startStr = "36.578581,-118.291994"
+
+#     endStr = raw_input('Enter the end latitude,longitude value (default Death Valley) --> ').replace(' ','')
+#     if not endStr:
+#       endStr = "36.23998,-116.83171"
+
+#     pathStr = startStr + "|" + endStr
+
+#     getElevation(pathStr)

@@ -1,0 +1,3 @@
+bambi_msgs/GeoPosition2D[] points
+---
+bambi_msgs/TerrainData[] terrainData
