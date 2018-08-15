@@ -27,6 +27,8 @@
 
 #include <geographic_msgs/GeoPoint.h>
 
+#include <Splines.hh>
+#include <cmath>
 
 
 using namespace bambi::trajectory_generator;
@@ -92,11 +94,26 @@ void TrajectoryGeneratorNode::cb_update_home_position(const mavros_msgs::HomePos
     m_homePosition = homePosition;
 }
 
-void TrajectoryGeneratorNode::generateTrajectory()
-{
+typedef boost::shared_ptr<SplinesLoad::CubicSpline> CubicSplinePtr;
+typedef std::tuple<CubicSplinePtr, CubicSplinePtr, CubicSplinePtr> SplineCurve3d;
+
+void pushBackSampleToSplineCurve(SplineCurve3d curve, double t, mavros_msgs::PositionTarget setPoint) {
+    std::get<0>(curve)->pushBack(t, setPoint.position.x);
+    std::get<1>(curve)->pushBack(t, setPoint.position.y);
+    std::get<2>(curve)->pushBack(t, setPoint.position.z);
+}
+
+void TrajectoryGeneratorNode::generateTrajectory() {
     // TODO make SAVE for EMPTY m_pPathXYZ ?
     m_pPositionTrajectoryENU = boost::shared_ptr<std::vector<mavros_msgs::PositionTarget>>(new std::vector<mavros_msgs::PositionTarget>());
 
+    std::tuple<CubicSplinePtr, CubicSplinePtr, CubicSplinePtr> curve {
+        CubicSplinePtr(new SplinesLoad::CubicSpline()),
+        CubicSplinePtr(new SplinesLoad::CubicSpline()),
+        CubicSplinePtr(new SplinesLoad::CubicSpline())
+    };
+
+    double sampleTime = static_cast<double>(1) / m_setPointRate;
 
     double totalDist = 0.0;
 
@@ -118,8 +135,8 @@ void TrajectoryGeneratorNode::generateTrajectory()
     posTargetLocal.coordinate_frame = mavros_msgs::PositionTarget::FRAME_LOCAL_NED;
     posTargetLocal.type_mask = mavros_msgs::PositionTarget::IGNORE_AFX |
             mavros_msgs::PositionTarget::IGNORE_AFY |
-            mavros_msgs::PositionTarget::IGNORE_AFZ |
-            mavros_msgs::PositionTarget::IGNORE_YAW ;
+            mavros_msgs::PositionTarget::IGNORE_AFZ/* |
+            mavros_msgs::PositionTarget::IGNORE_YAW_RATE*/;
 
 
     double residualDistFromPreviousSegment = 0.0;
@@ -130,6 +147,8 @@ void TrajectoryGeneratorNode::generateTrajectory()
     posTargetLocal.position.y = i->y;
     posTargetLocal.position.z = i->alt;
     m_pPositionTrajectoryENU->push_back(posTargetLocal);
+    pushBackSampleToSplineCurve(curve, 0.0, posTargetLocal);
+    int samplesInserted = 1;
 
     bool reachedEnd = false;
     while (!reachedEnd) {
@@ -162,6 +181,8 @@ void TrajectoryGeneratorNode::generateTrajectory()
                 posTargetLocal.position.y = i->y + ((k+1)*distanceBetweenAPairOfSamples - residualDistFromPreviousSegment) * unitDirectionVector.y;
                 posTargetLocal.position.z = i->alt + k * unitDirectionVector.alt;
                 m_pPositionTrajectoryENU->push_back(posTargetLocal);
+                pushBackSampleToSplineCurve(curve, sampleTime*samplesInserted, posTargetLocal);
+                ++samplesInserted;
             }
 
             residualDistFromPreviousSegment = dist2D(
@@ -176,9 +197,42 @@ void TrajectoryGeneratorNode::generateTrajectory()
     posTargetLocal.position.y = m_pPathXYZ_relAltitude->back().y;
     posTargetLocal.position.z = m_pPathXYZ_relAltitude->back().alt;
     m_pPositionTrajectoryENU->push_back(posTargetLocal);
+    pushBackSampleToSplineCurve(curve, sampleTime*samplesInserted, posTargetLocal);
 
 
     ROS_INFO("GENERATED %zd SAMPLES to be used at a frequency of %.1fHz", m_pPositionTrajectoryENU->size(), m_setPointRate);
+
+
+    CubicSplinePtr curveX = std::get<0>(curve);
+    CubicSplinePtr curveY = std::get<1>(curve);
+    CubicSplinePtr curveZ = std::get<2>(curve);
+
+    curveX->build();
+    curveY->build();
+    curveZ->build();
+
+
+    for (int i = 0; i < m_pPositionTrajectoryENU->size(); ++i) {
+        // better computation than addition in loop
+        double t = sampleTime * i;
+        mavros_msgs::PositionTarget& setpoint = m_pPositionTrajectoryENU->operator[](i);
+        setpoint.velocity.x = curveX->D(t);
+        setpoint.velocity.y = curveY->D(t);
+        setpoint.velocity.z = curveZ->D(t);
+        // head always towards where we are going
+        setpoint.yaw = atan2(setpoint.velocity.y, setpoint.velocity.x);
+        setpoint.yaw_rate = atan2(curveY->DD(t), curveX->DD(t));
+
+//        if (i > 0) {
+//            // calculate yaw for previous sample
+//            mavros_msgs::PositionTarget& previousSetpoint = m_pPositionTrajectoryENU->operator[](i-1);
+//            double deltaX = setpoint.velocity.x - previousSetpoint.velocity.x;
+//            double deltaY = setpoint.velocity.y - previousSetpoint.velocity.y;
+//            previousSetpoint.yaw_rate = atan2(deltaY, deltaX);
+//        }
+    }
+
+//    m_pPositionTrajectoryENU->back().yaw_rate = 0.0;
 }
 
 

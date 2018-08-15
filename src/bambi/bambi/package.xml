@@ -20,5 +20,6 @@
     <buildtool_depend>catkin</buildtool_depend>
     <depend>mavros_msgs</depend>
     <depend>bambi_msgs</depend>
+    <depend>splines</depend>
     <depend>geodesy</depend>
 </package>

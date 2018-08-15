@@ -9,3 +9,6 @@
 [submodule "src/bambi/bambi/src/coverage_path_planner/lib/spline"]
 	path = src/bambi/bambi/src/coverage_path_planner/lib/spline
 	url = git@github.com:/BambiSaver/cpp-spline
+[submodule "src/splines"]
+	path = src/splines
+	url = git@github.com:/BambiSaver/Splines

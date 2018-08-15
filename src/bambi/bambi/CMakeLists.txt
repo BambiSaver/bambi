@@ -3,6 +3,7 @@ project(bambi)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
+add_compile_options(-DSPLINES_DO_NOT_USE_GENERIC_CONTAINER)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -13,13 +14,14 @@ find_package(catkin REQUIRED COMPONENTS
     mavros_msgs
     bambi_msgs
     geodesy
+    splines
 )
 
 
 catkin_package(
   INCLUDE_DIRS 
   LIBRARIES bambi
-  CATKIN_DEPENDS mavros_msgs bambi_msgs geodesy
+  CATKIN_DEPENDS mavros_msgs bambi_msgs geodesy splines
   DEPENDS
 )
 
