@@ -35,10 +35,11 @@
 
 using namespace bambi::missioncontroller;
 
-StateMachine::StateMachine(const MCPublisher &publisher, rosTimerProviderFunction armTimerProvider) :
+StateMachine::StateMachine(const MCPublisher &publisher, rosTimerProviderFunction armTimerProvider,rosTimerProviderFunction changeModeTimerProvider) :
     m_state(State::INIT),
     m_publisher(publisher),
     m_armTimerProviderFunction(armTimerProvider),
+    m_changeModeTimerProviderFunction(changeModeTimerProvider),
     m_lastUavLandedState(mavros_msgs::ExtendedState::LANDED_STATE_UNDEFINED)
 {
 
@@ -84,8 +85,14 @@ void StateMachine::cb_update_global_position(const sensor_msgs::NavSatFix &navSa
   handleStateMachineCommand(Command::GLOBAL_POSITION_UPDATE, &navSatFix);
 }
 void StateMachine::cb_arming_timer(const ros::TimerEvent &) {
-  handleStateMachineCommand(Command::TRY_ARM_TIMER_SHOT, NULL);
+    handleStateMachineCommand(Command::TRY_ARM_TIMER_SHOT, NULL);
 }
+
+void StateMachine::cb_change_mode_timer(const ros::TimerEvent &)
+{
+     handleStateMachineCommand(Command::CHANGE_MODE_TIMER_SHOT, NULL);
+}
+
 void StateMachine::cb_mission_waypoint_reached(const mavros_msgs::WaypointReached &msg) {
     handleStateMachineCommand(Command::MISSION_ITEM_REACHED, (void*)&msg);
 }
@@ -225,21 +232,19 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
                             bambiInfo("WP sent lat=%6.2f long=%6.2f alt=%6.1f",listWP.request.waypoints[0].x_lat,
                                     listWP.request.waypoints[0].y_long,
                                     listWP.request.waypoints[0].z_alt);
-
-                            mavros_msgs::SetMode commandSetMode;
-                            commandSetMode.request.base_mode = 1; //stands for MAV_MODE_FLAG_CUSTOM_MODE_ENABLED
-                            commandSetMode.request.custom_mode = "AUTO.MISSION";
-                            if(m_publisher.setMode(commandSetMode)){
-                             //mission start command send (i.e change mode to AUTO.MISSION)
-                                changeState(State::STARTING_PHOTO_MISSION);
+                            //wait 2 second before change mode to auto
+                            m_changeModeTimer = m_changeModeTimerProviderFunction(ros::Duration(2.));
+                            m_changeModeTimer.start();
+                        } else{
+                            bambiError("Not able to send WP list => READY");
+                            //Not able to change mode and start mission
+                            changeState(State::READY);
                             }
-                            else{
-                                bambiError("Not able to change mode and start mission");
-                                //Not able to change mode and start mission
-                                changeState(State::READY);
-                            }
-                        }
-                    }
+                    } else{
+                        bambiError("Not able to wipe WPs list => READY");
+                        //Not able to wipe FCU WPs list
+                        changeState(State::READY);
+                }
             } else{
                 //do nothing but wait for next globalPosition update
             }
@@ -249,6 +254,31 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
         }
         break;
 
+    case State::CHANGING_TO_AUTO_MODE:
+        if (command == Command::MISSIONTRIGGER) {
+            ROS_INFO("Mission trigger received but not handled");
+        } else if (command == Command::CHANGE_MODE_TIMER_SHOT) {
+            //change mode to AUTO.MISSION
+            bambiInfo("Request to change mode to AUTO.MISSION");
+            mavros_msgs::SetMode commandSetMode;
+            commandSetMode.request.base_mode = 1; //stands for MAV_MODE_FLAG_CUSTOM_MODE_ENABLED
+            commandSetMode.request.custom_mode = "AUTO.MISSION";
+            if(m_publisher.setMode(commandSetMode)){
+                //mission start_command send (i.e change mode to AUTO.MISSION)
+                changeState(State::STARTING_PHOTO_MISSION);
+            } else{
+                bambiError("UNABLE TO CHANGE MODE => READY");
+                //Not able to change mode and start mission
+                changeState(State::READY);
+            }
+        } else if (command == Command::GLOBAL_POSITION_UPDATE // savely ignore GPS update, because we are not tracking any position here
+              || command == Command::MISSION_ITEM_REACHED // remaining MISSION_ITEM_REACHED may arrive, all OK
+              ) {
+            // ignore
+        } else {
+            ROS_WARN("Ignoring command %s in state CHANGING_TO_AUTO_MODE", commandToStringMap.at(command));
+        }
+        break;    
     case State::STARTING_PHOTO_MISSION:
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
@@ -260,7 +290,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
                 changeState(State::REACHING_MISSION_START_POINT);
             }else{
                 // TODO RTL here?
-                bambiError("UAV MODE NOT CHANGED AS EXPECTED");
+                bambiError("UAV MODE NOT CHANGED => READY");
                 ROS_ERROR("Unexpected error in mode change going back to READY state");
 
                 changeState(State::READY);
@@ -437,6 +467,8 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
     case State::MISSION_CANCELLING_RTL:
         if (command == Command::MISSIONTRIGGER) {
             bambiWarn("Mission Aborted RTL now!!!");
+
+
             ROS_INFO("Mission trigger received but not handled");
         } else {
             ROS_WARN("Ignoring command %s in state MISSION_CANCELLING_RTL", commandToStringMap.at(command));
@@ -514,6 +546,7 @@ const std::map<StateMachine::State, const char *>  StateMachine::stateToStringMa
   { StateMachine::State::READY, "READY" },
   { StateMachine::State::ARMING, "ARMING" },
   { StateMachine::State::TAKING_OFF, "TAKING_OFF" },
+  { StateMachine::State::CHANGING_TO_AUTO_MODE, "CHANGING_TO_AUTO_MODE"},
   { StateMachine::State::STARTING_PHOTO_MISSION, "STARTING_PHOTO_MISSION" },
   { StateMachine::State::REACHING_MISSION_START_POINT, "REACHING_MISSION_START_POINT" },
   { StateMachine::State::TAKING_ORTHO_PHOTO, "TAKING_ORTHO_PHOTO" },
@@ -529,6 +562,7 @@ const std::map<StateMachine::Command, const char *>  StateMachine::commandToStri
   { StateMachine::Command::MISSIONTRIGGER, "MISSIONTRIGGER" },
   { StateMachine::Command::GLOBAL_POSITION_UPDATE, "GLOBAL_POSITION_UPDATE" },
   { StateMachine::Command::TRY_ARM_TIMER_SHOT, "TRY_ARM_TIMER_SHOT" },
+  { StateMachine::Command::CHANGE_MODE_TIMER_SHOT, "CHANGE_MODE_TIMER_SHOT" },
   { StateMachine::Command::UAV_MODE_UPDATE, "UAV_MODE_UPDATE" },
   { StateMachine::Command::MISSION_ITEM_REACHED, "MISSION_ITEM_REACHED" },
   { StateMachine::Command::ORTHO_PHOTO_READY, "ORTHO_PHOTO_READY" },
