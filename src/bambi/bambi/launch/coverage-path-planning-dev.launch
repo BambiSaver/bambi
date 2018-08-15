@@ -2,7 +2,7 @@
   <!-- Run boundary_generator node under "bambi" namespace -->
   <node name="boundary_generator" ns="bambi" output="screen" pkg="bambi" type="boundary_generator"/>
   <!-- Run kml_generator node under "bambi" namespace -->
-  <node name="kml_generator" ns="bambi" output="screen" pkg="bambi" type="kml_generator"/>
+  <node name="terrain_data_provider" output="screen" ns="bambi" pkg="bambi" type="terrain_data_provider"/>
   <!-- Run coverage_path_planner node under "bambi" namespace -->
   <node name="coverage_path_planner" ns="bambi" output="screen" pkg="bambi" type="coverage_path_planner"/>
   <!-- Run missioncontroller node under "bambi" namespace -->

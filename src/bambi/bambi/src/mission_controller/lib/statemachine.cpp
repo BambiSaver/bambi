@@ -33,10 +33,17 @@
 #include <bambi_msgs/CoverageFlightTrigger.h>
 #include <mavros_msgs/StatusText.h>
 
+#define PATH_PLANNER_DEBUG_SETUP
+
+
 using namespace bambi::missioncontroller;
 
 StateMachine::StateMachine(const MCPublisher &publisher, rosTimerProviderFunction armTimerProvider) :
+#ifdef PATH_PLANNER_DEBUG_SETUP
+    m_state(State::GENERATING_BOUNDARY),
+#else
     m_state(State::INIT),
+#endif
     m_publisher(publisher),
     m_armTimerProviderFunction(armTimerProvider),
     m_lastUavLandedState(mavros_msgs::ExtendedState::LANDED_STATE_UNDEFINED)
@@ -332,6 +339,16 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             fieldWithInfo.home_position.longitude = m_homeGlobalPosition.longitude;
             fieldWithInfo.current_position.geopos_2d.latitude = m_lastGlobalPosition.latitude;
             fieldWithInfo.current_position.geopos_2d.longitude = m_lastGlobalPosition.longitude;
+
+#ifdef PATH_PLANNER_DEBUG_SETUP
+            fieldWithInfo.current_position.altitude_over_ground = 45000;
+            fieldWithInfo.current_position.geopos_2d.latitude = 46.453072;
+            fieldWithInfo.current_position.geopos_2d.longitude = 11.492048;
+            fieldWithInfo.home_position.latitude = 46.452895;
+            fieldWithInfo.home_position.longitude = 11.490920;
+            fieldWithInfo.thermal_camera_ground_footprint_height = 8.0;
+            fieldWithInfo.thermal_camera_ground_footprint_width = 8.0;
+#endif
 
             changeState(State::COVERAGE_PATH_PLANNING);
             m_publisher.triggerPathGeneration(fieldWithInfo);

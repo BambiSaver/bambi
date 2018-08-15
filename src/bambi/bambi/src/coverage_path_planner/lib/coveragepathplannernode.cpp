@@ -24,6 +24,10 @@
 #include "coveragepathplannernode.h"
 #include <bambi_msgs/Path.h>
 
+#include <bambi_msgs/TerrainDataProvider.h>
+#include <bambi_msgs/TerrainDataProviderRequest.h>
+#include <bambi_msgs/TerrainDataProviderResponse.h>
+
 #include <geodesy/utm.h>
 #include <geographic_msgs/GeoPoint.h>
 #include <algorithm>
@@ -155,6 +159,18 @@ void printDirectionMatrix(const boost::multi_array<std::string, 2>& matrix, int 
     }
 }
 
+void printTerrainMatrix(const boost::multi_array<double, 2>& matrix, int n_N, int n_E)
+{
+    for (int i = n_N+1; i >= 0; --i) {
+        std::ostringstream stringStream;
+        for (int j = 0; j <= n_E+1; ++j) {
+            stringStream << std::setw(5) << std::setprecision(4);
+            stringStream << matrix[i][j];
+        }
+        ROS_INFO("%s", stringStream.str().c_str());
+    }
+}
+
 const std::string getDirection(const std::pair<int,int>& from, const std::pair<int,int>& to) {
     if (to.first > from.first) {
         // went N
@@ -247,6 +263,7 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
     ROS_INFO("Making a grid of %d x %d cells, because we have a sensor footprint of %.2fm x %.2fm", n_E, n_N, minDimFootprint, minDimFootprint);
 
     boost::multi_array<int, 2> matrix(boost::extents[n_N+2][n_E+2]);
+    boost::multi_array<double, 2> terrainDataMatrix(boost::extents[n_N+2][n_E+2]);
     //boost::shared_ptr<map_t> map(new map_t());
 
     // make field larger to put in matrix (-2) on the borders for easier algorithm later
@@ -287,13 +304,90 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
 
 
 
+    /*************************************************
+     *                TERRAIN DATA
+     ************************************************/
+
+
+
+    bambi_msgs::TerrainDataProvider service;
+    bool serviceError = false;
+
+    if (ros::service::waitForService("/bambi/terrain_data_provider", ros::Duration(2.0))){
+        std::pair<int,int> index;
+
+        for (index.first = 1; index.first <= n_N; ++index.first) {
+            for (index.second = 1; index.second <= n_E; ++index.second) {
+                if (matrix[index.first][index.second] == -1) {
+                    auto utmPoint = getUTMCenterPointFromCellIndex(bottomBorder_N, leftBorder_E, index, minDimFootprint, bottomLeft);
+                    geographic_msgs::GeoPoint geoPoint = geodesy::toMsg(utmPoint);
+                    bambi_msgs::GeoPosition2D geoPos;
+                    geoPos.latitude = geoPoint.latitude;
+                    geoPos.longitude = geoPoint.longitude;
+                    service.request.points.push_back(geoPos);
+                }
+            }
+        }
+
+        if (!ros::service::call("/bambi/terrain_data_provider" ,service)) {
+            serviceError =  true;
+        }
+    } else {
+        serviceError = true;
+    }
+
+    if (serviceError) {
+        ROS_ERROR("/bambi/terrain_data_provider service not available, assuming a ground plane");
+    } else {
+        ROS_INFO("GOT TERRAIN DATA: %zd samples", service.response.terrainData.size());
+    }
+
+    // fill matrix
+    std::pair<int,int> index;
+    int k = 0;
+    for (index.first = 1; index.first <= n_N; ++index.first) {
+        for (index.second = 1; index.second <= n_E; ++index.second) {
+            if (matrix[index.first][index.second] == -1) {
+                if (!serviceError) {
+                    terrainDataMatrix[index.first][index.second] = service.response.terrainData[k].altitudeInMeters;
+                    ++k;
+                } else {
+                    terrainDataMatrix[index.first][index.second] = 0.0;
+                }
+
+            }
+        }
+    }
+
+    printTerrainMatrix(terrainDataMatrix, n_N, n_E);
+
+
+
+    /*************************************************
+     *                TERRAIN END
+     ************************************************/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     geographic_msgs::GeoPoint currentPosition = geodesy::toMsg(fieldCoverageInfo.current_position.geopos_2d.latitude, fieldCoverageInfo.current_position.geopos_2d.longitude);
     geodesy::UTMPoint currentPositionUTM(currentPosition);
 
     // TODO: We assume that current position is part of the field. --> may NOT be the case (?)
     // SOLUTION: check if the neighborfields are accessable (=-1) and not =(-2), and if not, choose a random accessable position to start
 
-    auto index = getIndexOfMatrixByPoint(currentPositionUTM.northing, currentPositionUTM.easting, bottomBorder_N, leftBorder_E, minDimFootprint);
+    index = getIndexOfMatrixByPoint(currentPositionUTM.northing, currentPositionUTM.easting, bottomBorder_N, leftBorder_E, minDimFootprint);
 
     std::queue<std::pair<int, int>> cellQueue;
     cellQueue.push(index);
