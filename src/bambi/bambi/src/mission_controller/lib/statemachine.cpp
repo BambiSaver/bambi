@@ -31,7 +31,7 @@
 #include <mavros_msgs/CommandCode.h>
 #include <mavros_msgs/SetMode.h>
 #include <bambi_msgs/CoverageFlightTrigger.h>
-
+#include <mavros_msgs/StatusText.h>
 
 using namespace bambi::missioncontroller;
 
@@ -124,6 +124,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             auto navSatFix = (sensor_msgs::NavSatFix*)msg;
             if (navSatFix->status.status == sensor_msgs::NavSatStatus::STATUS_FIX) {
                 ROS_INFO("GPS fix received, ready now");
+                bambiInfo("Gps get lock => Global Position received");
                 changeState(State::READY);
             } else {
                 ROS_DEBUG("GPS fix received, but status is not STATUS_FIX, so waiting for next to change to READY");
@@ -135,7 +136,14 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
     case State::READY:
         if (command == Command::MISSIONTRIGGER) {
             auto missionTriggerMsg = (mavros_msgs::BambiMissionTrigger*)msg;
-
+            bambiInfo("MTrig %1d=%4.1f=%6.2f=%6.2f=%4.1f=%4.1f=%6.1f",
+                      static_cast<int>(missionTriggerMsg->startStop),
+                      missionTriggerMsg->altitudeTakeoff,
+                      missionTriggerMsg->latitudeOrthophoto,
+                      missionTriggerMsg->longitudeOrthophoto,
+                      missionTriggerMsg->SensorFootprintMinDim,
+                      missionTriggerMsg->altitudeScanning,
+                      missionTriggerMsg->altitudeOrthophoto);
             if (missionTriggerMsg->startStop) {
                 m_missionTriggerStart = *missionTriggerMsg;
                 //float altitude = static_cast<float>(m_lastGlobalPosition.altitude);
@@ -161,6 +169,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             ROS_INFO("Mission trigger received but not handled");
         } else if (command == Command::TRY_ARM_TIMER_SHOT) {
             if(m_armingTries < MAX_ARMING_TRIES){
+                bambiInfo("Arming try %d/%d", m_armingTries, MAX_ARMING_TRIES);
                 if (m_publisher.arm()){
                     ROS_INFO("Copter ARMED, sending takeoff message (altitude= %.2fm)", m_missionTriggerStart.altitudeTakeoff);
                     //save home position before sending takeoff request
@@ -180,6 +189,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
                 m_armingTries++;
             } else{
                 //no arm after MAX_ARMING_TRIES tries
+                bambiError("ARM FAILED after %d tries", MAX_ARMING_TRIES);
                 ROS_ERROR("NO ARMING after %d tries, going back to READY ", MAX_ARMING_TRIES);
                 changeState(State::READY);
             }
@@ -194,11 +204,11 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
         } else if (command == Command::GLOBAL_POSITION_UPDATE) {
-            // TODO tracking height to pass to next
+
             if (m_lastAltitude.relative > m_missionTriggerStart.altitudeTakeoff-0.1f){
+                    bambiInfo("TO altitude %4.1fm reached", m_lastAltitude.relative);
                     //takeoff target altitude reached
                     if(m_publisher.clearWPList()){
-
                         mavros_msgs::Waypoint photoWP;
                         photoWP.command = mavros_msgs::CommandCode::NAV_WAYPOINT;
                         photoWP.is_current = true;
@@ -207,12 +217,15 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
                         photoWP.y_long = m_missionTriggerStart.longitudeOrthophoto;
                         //Altitude should be expressed in AMSL (meters)
                         photoWP.z_alt = m_missionTriggerStart.altitudeOrthophoto;
-
+                        //create WPlist
                         mavros_msgs::WaypointPush listWP;
                         listWP.request.waypoints.push_back(photoWP);
-
                         if(m_publisher.pushWPList(listWP)){
                             //Waypoints list successfully sent
+                            bambiInfo("WP sent lat=%6.2f long=%6.2f alt=%6.1f",listWP.request.waypoints[0].x_lat,
+                                    listWP.request.waypoints[0].y_long,
+                                    listWP.request.waypoints[0].z_alt);
+
                             mavros_msgs::SetMode commandSetMode;
                             commandSetMode.request.base_mode = 1; //stands for MAV_MODE_FLAG_CUSTOM_MODE_ENABLED
                             commandSetMode.request.custom_mode = "AUTO.MISSION";
@@ -221,7 +234,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
                                 changeState(State::STARTING_PHOTO_MISSION);
                             }
                             else{
-                                // TODO RTL?
+                                bambiError("Not able to change mode and start mission");
                                 //Not able to change mode and start mission
                                 changeState(State::READY);
                             }
@@ -242,11 +255,14 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
 
         }else if (command == Command::UAV_MODE_UPDATE){
             if (m_lastUavMode == "AUTO.MISSION"){
+                bambiInfo("UAV mode= %s", m_lastUavMode.c_str());
                 //mission has started
                 changeState(State::REACHING_MISSION_START_POINT);
             }else{
                 // TODO RTL here?
+                bambiError("UAV MODE NOT CHANGED AS EXPECTED");
                 ROS_ERROR("Unexpected error in mode change going back to READY state");
+
                 changeState(State::READY);
             }
 
@@ -261,14 +277,12 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
         } else if (command == Command::MISSION_ITEM_REACHED){
+            bambiInfo("WP reached");
             //we have reached the mission starting point
             //???TODO???: SWITCH MODE TO LOITER (potresti avere problemi nel setMode, vedi https://github.com/mavlink/mavros/pull/811)
 
-
             changeState(State::TAKING_ORTHO_PHOTO);
             m_publisher.triggerOrthPhotoShutter();
-
-
         } else if (command == Command::GLOBAL_POSITION_UPDATE) {
             // silently ignore GPS update, because we are waiting for MISSION_ITEM_REACHED
         } else {
@@ -281,7 +295,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             ROS_INFO("Mission trigger received but not handled");
         } else if (command == Command::ORTHO_PHOTO_READY) {
             auto photo = (bambi_msgs::OrthoPhoto*)msg;
-
+            bambiInfo("Orthophoto Saved");
             changeState(State::GENERATING_BOUNDARY);
             m_publisher.triggerBoundaryGeneration(*photo);
 
@@ -297,26 +311,27 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
         } else if (command == Command::BOUNDARY_GENERATED) {
+
+            bambiInfo("CPP AP=%6.2f %6.2f %4.1f HP=%6.2f %6.2f %4.1f", m_homeGlobalPosition.latitude,
+                      m_homeGlobalPosition.longitude,
+                      m_lastAltitude.relative,
+                      m_homeGlobalPosition.latitude,
+                      m_homeGlobalPosition.longitude);
+
             bambi_msgs::FieldCoverageInfo fieldWithInfo;
+
             fieldWithInfo.field = *(bambi_msgs::Field*)msg;
-
-
-            // TODO get this info from m_missionTriggerStart
-
-
             fieldWithInfo.relative_altitude_scanning = m_missionTriggerStart.altitudeScanning;
             fieldWithInfo.relative_altitude_returning = m_missionTriggerStart.altitudeTakeoff;
-
-            fieldWithInfo.thermal_camera_ground_footprint_height = m_missionTriggerStart.SensorFootprintMinDim;
+            //TODO check if altitude msg m_lastAltitude.terrain is correct then use that as altitude over ground.
+            //if, in case of no distance sensor the information it is avaiable we could use relative altitude.
+            fieldWithInfo.current_position.altitude_over_ground = m_lastAltitude.relative;
             fieldWithInfo.thermal_camera_ground_footprint_height = m_missionTriggerStart.SensorFootprintMinDim;
             fieldWithInfo.thermal_camera_ground_footprint_width = m_missionTriggerStart.SensorFootprintMinDim;
             fieldWithInfo.home_position.latitude = m_homeGlobalPosition.latitude;
             fieldWithInfo.home_position.longitude = m_homeGlobalPosition.longitude;
             fieldWithInfo.current_position.geopos_2d.latitude = m_lastGlobalPosition.latitude;
             fieldWithInfo.current_position.geopos_2d.longitude = m_lastGlobalPosition.longitude;
-            //TODO check if altitude msg m_lastAltitude.terrain is correct then use that as altitude over ground.
-            //if, in case of no distance sensor the information it is avaiable we could use relative altitude.
-            fieldWithInfo.current_position.altitude_over_ground =  45.0f;
 
             changeState(State::COVERAGE_PATH_PLANNING);
             m_publisher.triggerPathGeneration(fieldWithInfo);
@@ -341,6 +356,10 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             pathWithConstraints.flight_constraints.max_velocity = 6.5;
             pathWithConstraints.flight_constraints.max_acceleration = 15.0;
             m_publisher.triggerTrajectoryGeneration(pathWithConstraints);
+
+            bambiInfo("Path pts=%zd Vmax=%3.1f Amax=%4.1f",pathWithConstraints.path.geometric_path.size(),
+                      pathWithConstraints.flight_constraints.max_velocity,
+                      pathWithConstraints.flight_constraints.max_acceleration);
         } else if (command == Command::GLOBAL_POSITION_UPDATE // savely ignore GPS update, because we are not tracking any position here
                    || command == Command::MISSION_ITEM_REACHED // remaining MISSION_ITEM_REACHED may arrive, all OK
               ) {
@@ -356,8 +375,10 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             changeState(State::COVERAGE_FLIGHT);
             auto trajectory = (bambi_msgs::Trajectory*) msg;
             bambi_msgs::CoverageFlightTrigger cft;
+            cft.startStop =true;
             cft.trajectory = *trajectory;
             m_publisher.triggerCoverageFlight(cft);
+            bambiInfo("CFT Pts=%zd SamplRate=%5.1f", cft.trajectory.setpoints.size(), cft.trajectory.sample_rate);
         } else if (command == Command::GLOBAL_POSITION_UPDATE // savely ignore GPS update, because we are not tracking any position here
                    || command == Command::MISSION_ITEM_REACHED // remaining MISSION_ITEM_REACHED may arrive, all OK
               ) {
@@ -370,8 +391,8 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
         if (command == Command::MISSIONTRIGGER) {
             ROS_INFO("Mission trigger received but not handled");
         } else if (command == Command::COVERAGE_FC_REACHED_HOME) {
-            ROS_INFO("We reached HOME!!!! (we could land now, don't know how to do that yet)");
-
+            bambiInfo("Home reached!!! Almost done fellow");
+            ROS_INFO("We reached HOME!!!!");
             mavros_msgs::SetMode commandSetMode;
             commandSetMode.request.base_mode = 1; //stands for MAV_MODE_FLAG_CUSTOM_MODE_ENABLED
             commandSetMode.request.custom_mode = "AUTO.LAND";
@@ -383,6 +404,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
                 //mission start command send (i.e change mode to AUTO.MISSION)
                 changeState(State::LANDING);
             } else {
+                bambiError("CANNOT SET AUTO.LAND mode => READY state");
                 // TODO RTL?
                 //Not able to change mode and start mission
                 changeState(State::READY);
@@ -401,6 +423,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
         } else if (command == Command::LANDED_STATE_UPDATE) {
             // auto extendedState = static_cast<mavros_msgs::ExtendedState*>(msg); NOT NECESSARY BECAUSE WE HAVE IT IN MEMBER
             if (m_lastUavLandedState == mavros_msgs::ExtendedState::LANDED_STATE_ON_GROUND) {
+                bambiInfo("Successfully landed(!), SWITCH ME OFF PLZ");
                 ROS_INFO("Successfully landed(!)");
                 changeState(State::READY);
             }
@@ -413,6 +436,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
         break;
     case State::MISSION_CANCELLING_RTL:
         if (command == Command::MISSIONTRIGGER) {
+            bambiWarn("Mission Aborted RTL now!!!");
             ROS_INFO("Mission trigger received but not handled");
         } else {
             ROS_WARN("Ignoring command %s in state MISSION_CANCELLING_RTL", commandToStringMap.at(command));
@@ -424,6 +448,54 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
 void StateMachine::changeState(StateMachine::State newState) {
   ROS_INFO("STATE MACHINE STATE CHANGE %s ==> %s", stateToStringMap.at(m_state), stateToStringMap.at(newState));
   m_state = newState;
+}
+
+
+void StateMachine::bambiInfo(const char format[], ...){
+
+    std::string msg;
+    msg = "BB_I" + stateToLogStringMap.at(m_state) + "-";
+    va_list args;
+    char buffer[128];
+    sprintf(buffer, format, args);
+    va_end(args);
+    msg = msg + buffer;
+    m_publisher.sendStatusText(msg,mavros_msgs::StatusText::INFO);
+
+}
+
+void StateMachine::bambiDebug(const char format[], ...){
+    std::string msg;
+    msg = "BB_D" + stateToLogStringMap.at(m_state) + "-";
+    va_list args;
+    char buffer[128];
+    sprintf(buffer, format, args);
+    va_end(args);
+    msg = msg + buffer;
+    m_publisher.sendStatusText(msg,mavros_msgs::StatusText::DEBUG);
+
+}
+
+void StateMachine::bambiWarn(const char format[], ...){
+    std::string msg;
+    msg = "BB_W" + stateToLogStringMap.at(m_state) + "-";
+    va_list args;
+    char buffer[128];
+    sprintf(buffer, format, args);
+    va_end(args);
+    msg = msg + buffer;
+    m_publisher.sendStatusText(msg,mavros_msgs::StatusText::ALERT);
+}
+
+void StateMachine::bambiError(const char format[], ...){
+    std::string msg;
+    msg = "BB_E" + stateToLogStringMap.at(m_state) + "-";
+    va_list args;
+    char buffer[128];
+    sprintf(buffer, format, args);
+    va_end(args);
+    msg = msg + buffer;
+    m_publisher.sendStatusText(msg,mavros_msgs::StatusText::ERROR);
 }
 
 
@@ -469,3 +541,20 @@ const std::map<StateMachine::Command, const char *>  StateMachine::commandToStri
   { StateMachine::Command::LANDED_STATE_UPDATE, "LANDED_STATE_UPDATE" },
 };
 
+
+
+const std::map<StateMachine::State, std::string>  StateMachine::stateToLogStringMap = {
+  { StateMachine::State::INIT, "INIT" },
+  { StateMachine::State::READY, "READY" },
+  { StateMachine::State::ARMING, "ARMING" },
+  { StateMachine::State::TAKING_OFF, "TOING" },
+  { StateMachine::State::STARTING_PHOTO_MISSION, "SPM" },
+  { StateMachine::State::REACHING_MISSION_START_POINT, "RMSP" },
+  { StateMachine::State::TAKING_ORTHO_PHOTO, "TOP" },
+  { StateMachine::State::GENERATING_BOUNDARY, "GENB" },
+  { StateMachine::State::COVERAGE_PATH_PLANNING, "CPP" },
+  { StateMachine::State::GENERATING_TRAJECTORY, "GENTR" },
+  { StateMachine::State::COVERAGE_FLIGHT, "COVFL" },
+  { StateMachine::State::LANDING, "LNDNG" },
+  { StateMachine::State::MISSION_CANCELLING_RTL, "MCRTL" },
+};

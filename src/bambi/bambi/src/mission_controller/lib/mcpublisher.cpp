@@ -23,12 +23,12 @@
  */
 #include "mcpublisher.h"
 
-#include <mavros_msgs/StatusText.h>
+
 #include <mavros_msgs/CommandTOL.h>
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/GlobalPositionTarget.h>
 #include <mavros_msgs/WaypointClear.h>
-
+#include <string>
 #include <bambi_msgs/Field.h>
 
 #include <geographic_msgs/GeoPoint.h>
@@ -191,6 +191,16 @@ void MCPublisher::triggerTrajectoryGeneration(const bambi_msgs::PathWithConstrai
 
 void MCPublisher::triggerCoverageFlight(const bambi_msgs::CoverageFlightTrigger &trajectory) {
     m_triggerCoverageFlightPublisher.publish(trajectory);
+}
+
+void MCPublisher::sendStatusText(const std::string &text, mavros_msgs::StatusText::_severity_type severity)
+{
+    std::string msg = text;
+    msg.resize(50);
+    mavros_msgs::StatusText statusText;
+    statusText.severity = severity;
+    statusText.text = text;
+    m_statusTextPublisher.publish(statusText);
 }
 
 

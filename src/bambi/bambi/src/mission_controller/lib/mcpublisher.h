@@ -34,7 +34,7 @@
 
 #include <mavros_msgs/WaypointPush.h>
 #include <mavros_msgs/SetMode.h>
-
+#include <mavros_msgs/StatusText.h>
 
 namespace bambi {
 namespace missioncontroller {
@@ -48,14 +48,13 @@ public:
     bool takeOff(float takeoffAltitudeGlobal);
     bool clearWPList();
     bool pushWPList(mavros_msgs::WaypointPush &commandWPPush);
-    bool setMode(mavros_msgs::SetMode &commandSetMode);
-
+    bool setMode(mavros_msgs::SetMode &commandSetMode); 
     void triggerOrthPhotoShutter();
     void triggerBoundaryGeneration(const bambi_msgs::OrthoPhoto&);
     void triggerPathGeneration(const bambi_msgs::FieldCoverageInfo& field);
     void triggerTrajectoryGeneration(const bambi_msgs::PathWithConstraints& path);
     void triggerCoverageFlight(const bambi_msgs::CoverageFlightTrigger& trajectory);
-
+    void sendStatusText(const std::string &statusText,mavros_msgs::StatusText::_severity_type severity);
 
 private:
   ros::NodeHandle m_mcNodeHandle;

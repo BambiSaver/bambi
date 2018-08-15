@@ -72,6 +72,7 @@ public:
     void cb_trajectory_ready(const bambi_msgs::Trajectory& msg);
     void cb_coverage_flight_reached_home(const std_msgs::Bool& msg);
     
+
     enum class State {
       INIT,
       READY,
@@ -107,7 +108,11 @@ public:
 private:
     void handleStateMachineCommand(Command command, const void* msg);
     void changeState(State newState);
-    
+
+    void bambiInfo(const char* format, ...);
+    void bambiDebug(const char* format, ...);
+    void bambiWarn(const char* format, ...);
+    void bambiError(const char* format, ...);
     State m_state;
     MCPublisher m_publisher;
 
@@ -120,7 +125,7 @@ private:
     //REMEMBER the global position published by mavros has:
     //      latitude    (WGS84)
     //      longitude   (WGS84)
-    //      altitude    (AMSL)
+    //      altitude    (WGS84)
 
     //home position
     sensor_msgs::NavSatFix m_homeGlobalPosition;
@@ -133,6 +138,8 @@ private:
     
     static const std::map<State, const char *> stateToStringMap;
     static const std::map<Command, const char *> commandToStringMap;
+    static const std::map<State, std::string> stateToLogStringMap;
+
 };
 
 }
