@@ -135,8 +135,8 @@ void TrajectoryGeneratorNode::generateTrajectory() {
     posTargetLocal.coordinate_frame = mavros_msgs::PositionTarget::FRAME_LOCAL_NED;
     posTargetLocal.type_mask = mavros_msgs::PositionTarget::IGNORE_AFX |
             mavros_msgs::PositionTarget::IGNORE_AFY |
-            mavros_msgs::PositionTarget::IGNORE_AFZ/* |
-            mavros_msgs::PositionTarget::IGNORE_YAW_RATE*/;
+            mavros_msgs::PositionTarget::IGNORE_AFZ |
+            mavros_msgs::PositionTarget::IGNORE_YAW_RATE;
 
 
     double residualDistFromPreviousSegment = 0.0;

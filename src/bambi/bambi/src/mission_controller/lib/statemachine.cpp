@@ -33,7 +33,7 @@
 #include <bambi_msgs/CoverageFlightTrigger.h>
 #include <mavros_msgs/StatusText.h>
 
-#define PATH_PLANNER_DEBUG_SETUP
+//#define PATH_PLANNER_DEBUG_SETUP
 
 
 using namespace bambi::missioncontroller;
@@ -401,7 +401,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             pathWithConstraints.path = *((bambi_msgs::Path*)msg);
 
             // TODO get from m_missionTriggerStart (?)
-            pathWithConstraints.flight_constraints.max_velocity = 6.5;
+            pathWithConstraints.flight_constraints.max_velocity = 5.0;
             pathWithConstraints.flight_constraints.max_acceleration = 15.0;
             m_publisher.triggerTrajectoryGeneration(pathWithConstraints);
 
@@ -504,7 +504,7 @@ void StateMachine::changeState(StateMachine::State newState) {
 void StateMachine::bambiInfo(const char format[], ...){
 
     std::string msg;
-    msg = "BB_I" + stateToLogStringMap.at(m_state) + "-";
+    msg = "BB_" + stateToLogStringMap.at(m_state) + "-";
     va_list args;
     char buffer[128];
     sprintf(buffer, format, args);
@@ -516,7 +516,7 @@ void StateMachine::bambiInfo(const char format[], ...){
 
 void StateMachine::bambiDebug(const char format[], ...){
     std::string msg;
-    msg = "BB_D" + stateToLogStringMap.at(m_state) + "-";
+    msg = "BB_" + stateToLogStringMap.at(m_state) + "-";
     va_list args;
     char buffer[128];
     sprintf(buffer, format, args);
@@ -528,7 +528,7 @@ void StateMachine::bambiDebug(const char format[], ...){
 
 void StateMachine::bambiWarn(const char format[], ...){
     std::string msg;
-    msg = "BB_W" + stateToLogStringMap.at(m_state) + "-";
+    msg = "BB_" + stateToLogStringMap.at(m_state) + "-";
     va_list args;
     char buffer[128];
     sprintf(buffer, format, args);
@@ -539,7 +539,7 @@ void StateMachine::bambiWarn(const char format[], ...){
 
 void StateMachine::bambiError(const char format[], ...){
     std::string msg;
-    msg = "BB_E" + stateToLogStringMap.at(m_state) + "-";
+    msg = "BB_" + stateToLogStringMap.at(m_state) + "-";
     va_list args;
     char buffer[128];
     sprintf(buffer, format, args);
@@ -600,6 +600,7 @@ const std::map<StateMachine::State, std::string>  StateMachine::stateToLogString
   { StateMachine::State::READY, "READY" },
   { StateMachine::State::ARMING, "ARMING" },
   { StateMachine::State::TAKING_OFF, "TOING" },
+  { StateMachine::State::CHANGING_TO_AUTO_MODE, "CTAM"},
   { StateMachine::State::STARTING_PHOTO_MISSION, "SPM" },
   { StateMachine::State::REACHING_MISSION_START_POINT, "RMSP" },
   { StateMachine::State::TAKING_ORTHO_PHOTO, "TOP" },
