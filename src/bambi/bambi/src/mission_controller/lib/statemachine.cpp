@@ -242,6 +242,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
                             //wait 2 second before change mode to auto
                             m_changeModeTimer = m_changeModeTimerProviderFunction(ros::Duration(2.));
                             m_changeModeTimer.start();
+                            changeState(State::CHANGING_TO_AUTO_MODE);
                         } else{
                             bambiError("Not able to send WP list => READY");
                             //Not able to change mode and start mission
