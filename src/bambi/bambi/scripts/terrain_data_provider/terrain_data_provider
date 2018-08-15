@@ -1,0 +1,49 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import roslib
+roslib.load_manifest('bambi_msgs')
+import rospy
+import sys
+import os
+
+from bambi_msgs.msg import GeoPosition2D
+from bambi_msgs.msg import TerrainData
+from bambi_msgs.srv import TerrainDataProvider
+#from std_msgs.msg import Bool
+
+
+class TerrainDataProviderNode():
+
+    def __init__(self):
+        #self.m_orthoPhotoPublisher = rospy.Publisher("~ortho_photo_ready",
+        #                                            OrthoPhoto, queue_size=5)
+
+        #rospy.init_node('add_two_ints_server')
+        self.m_service = rospy.Service('terrain_data_provider', TerrainDataProvider, self.cb_handle_request)
+        
+        #rospy.Subscriber('/bambi/terrain_data_provider/request', Bool, self.cb_handle_request)
+
+        rospy.spin()
+
+
+    def cb_handle_request(self, req):
+        # Set the message to publish as our custom message.
+        #msg = OrthoPhoto()
+        print "Got Request"
+        # Initialize message variables.
+        #msg.filenameWithFullPath = os.path.expandvars('$BAMBI_OWNCLOUD_HOME/sample-border-1.kml')
+        #self.m_orthoPhotoPublisher.publish(msg)
+
+
+
+# Main function.
+if __name__ == '__main__':
+    # Initialize the node and name it.
+    rospy.init_node('terrain_data_provider')
+
+    rospy.loginfo("TerrainDataProvider STARTUP")
+    # Go to class functions that do all the heavy lifting. Do error checking.
+    try:
+        orthoPhotoNode = TerrainDataProviderNode()
+    except rospy.ROSInterruptException: pass
