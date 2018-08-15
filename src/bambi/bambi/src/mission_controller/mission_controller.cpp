@@ -40,14 +40,20 @@ ros::Timer rosArmTimerProviderFunction (ros::Duration period) {
     return nhptr->createTimer(period, &StateMachine::cb_arming_timer, smptr, true, false);
 }
 
+ros::Timer rosChangeModeTimerProviderFunction (ros::Duration period) {
+    ROS_INFO("CREATING TIMER");
+    return nhptr->createTimer(period, &StateMachine::cb_change_mode_timer, smptr, true, false);
+}
+
+
 
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "mission_controller");
   ros::NodeHandle nh("~");
-  
+
   MCPublisher mcpublisher(nh);
-  StateMachine stateMachine(mcpublisher, rosArmTimerProviderFunction);
+  StateMachine stateMachine(mcpublisher, rosArmTimerProviderFunction,rosChangeModeTimerProviderFunction);
   
   // no null ptr possible, because call backs will only be active after
   // ros::spin()

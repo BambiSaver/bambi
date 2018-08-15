@@ -94,7 +94,7 @@ void TrajectoryGeneratorNode::cb_update_home_position(const mavros_msgs::HomePos
     m_homePosition = homePosition;
 }
 
-typedef boost::shared_ptr<SplinesLoad::QuinticSpline> CubicSplinePtr;
+typedef boost::shared_ptr<SplinesLoad::CubicSpline> CubicSplinePtr;
 typedef std::tuple<CubicSplinePtr, CubicSplinePtr, CubicSplinePtr> SplineCurve3d;
 
 void pushBackSampleToSplineCurve(SplineCurve3d curve, double t, mavros_msgs::PositionTarget setPoint) {
@@ -108,9 +108,9 @@ void TrajectoryGeneratorNode::generateTrajectory() {
     m_pPositionTrajectoryENU = boost::shared_ptr<std::vector<mavros_msgs::PositionTarget>>(new std::vector<mavros_msgs::PositionTarget>());
 
     std::tuple<CubicSplinePtr, CubicSplinePtr, CubicSplinePtr> curve {
-        CubicSplinePtr(new SplinesLoad::QuinticSpline()),
-        CubicSplinePtr(new SplinesLoad::QuinticSpline()),
-        CubicSplinePtr(new SplinesLoad::QuinticSpline())
+        CubicSplinePtr(new SplinesLoad::CubicSpline()),
+        CubicSplinePtr(new SplinesLoad::CubicSpline()),
+        CubicSplinePtr(new SplinesLoad::CubicSpline())
     };
 
     double sampleTime = static_cast<double>(1) / m_setPointRate;

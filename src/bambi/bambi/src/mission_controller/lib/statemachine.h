@@ -49,15 +49,16 @@ class StateMachine
 {
 public:
     typedef ros::Timer (*rosTimerProviderFunction)(ros::Duration period);
-  
+
     /**
      * The provider function of ros::Timer is used to be independent from the node and 
      * be able to eventually unit test the StateMachine class.
      * @brief StateMachine
      * @param publisher
      * @param armTimerProvider
+     * @param changeModeTimerProvider
      */
-    StateMachine(const MCPublisher &publisher, rosTimerProviderFunction armTimerProvider);
+    StateMachine(const MCPublisher &publisher, rosTimerProviderFunction armTimerProvider, rosTimerProviderFunction changeModeTimerProvider);
 
     void cb_mission_trigger_received (const mavros_msgs::BambiMissionTrigger& msg);
     void cb_uav_state_change(const mavros_msgs::State& msg);
@@ -65,6 +66,7 @@ public:
     void cb_uav_altitude(const mavros_msgs::Altitude &msg);
     void cb_update_global_position(const sensor_msgs::NavSatFix& navSatFix);
     void cb_arming_timer(const ros::TimerEvent&);
+    void cb_change_mode_timer(const ros::TimerEvent&);
     void cb_mission_waypoint_reached(const mavros_msgs::WaypointReached& msg);
     void cb_orthophoto_ready(const bambi_msgs::OrthoPhoto& msg);
     void cb_boundary_generated(const bambi_msgs::Field& msg);
@@ -78,6 +80,7 @@ public:
       READY,
       ARMING,
       TAKING_OFF,
+      CHANGING_TO_AUTO_MODE,
       STARTING_PHOTO_MISSION,
       REACHING_MISSION_START_POINT,
       TAKING_ORTHO_PHOTO,
@@ -93,6 +96,7 @@ public:
       MISSIONTRIGGER,
       GLOBAL_POSITION_UPDATE,
       TRY_ARM_TIMER_SHOT,
+      CHANGE_MODE_TIMER_SHOT,
       UAV_MODE_UPDATE,
       MISSION_ITEM_REACHED,
       ORTHO_PHOTO_READY,
@@ -121,6 +125,9 @@ private:
     ros::Timer m_armTimer;
     uint8_t m_armingTries;
 
+    //Change mode attribute
+    rosTimerProviderFunction m_changeModeTimerProviderFunction;
+    ros::Timer m_changeModeTimer;
 
     //REMEMBER the global position published by mavros has:
     //      latitude    (WGS84)

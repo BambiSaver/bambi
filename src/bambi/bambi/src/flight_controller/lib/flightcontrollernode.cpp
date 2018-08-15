@@ -175,7 +175,7 @@ void FlightControllerNode::handleStateMachineCommand(FlightControllerNode::Comma
         if (command == Command::COVERAGE_FLIGHT_TRIGGER_RECEIVED) {
             auto coverageFlightTrigger = static_cast<const bambi_msgs::CoverageFlightTrigger*>(msg);
 
-            if (!coverageFlightTrigger->startStop) {
+            if (coverageFlightTrigger->startStop) {
                 ROS_WARN("Received a coverage flight trigger to STOP the mission, but mission wasn't even started");
             } else {
                 m_index = 0;
