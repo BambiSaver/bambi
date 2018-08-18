@@ -133,6 +133,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
     case State::INIT:
         if (command == Command::MISSIONTRIGGER) {
             ROS_WARN("IGNORING MISSIONTRIGGER COMMAND, NOT READY YET");
+            bambiWarn("IGNORING MISSIONTRIGGER CMD, NOT READY YET");
             break;
         } else if (command == Command::GLOBAL_POSITION_UPDATE) {
             auto navSatFix = (sensor_msgs::NavSatFix*)msg;
@@ -168,7 +169,6 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
                 // create and trigger arm timer
                 m_armTimer = m_armTimerProviderFunction(ros::Duration(2.));
                 m_armTimer.start();
-                        
             } else {
                 ROS_WARN("MISSIONTRIGGER STOP received: Mission not started yet, cannot STOP");
             }
@@ -180,7 +180,15 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
         break;
     case State::ARMING:
         if (command == Command::MISSIONTRIGGER) {
-            ROS_INFO("Mission trigger received but not handled");
+             auto missionTriggerMsg = (mavros_msgs::BambiMissionTrigger*)msg;
+             if(!missionTriggerMsg->startStop){
+                //Aborting mission
+                 ROS_INFO("Aborting mission...");
+                 bambiInfo("Aborting mission..");
+                 changeState(State::READY);
+             }else{
+                 ROS_INFO("Mission trigger received but not handled");
+             }
         } else if (command == Command::TRY_ARM_TIMER_SHOT) {
             if(m_armingTries < MAX_ARMING_TRIES){
                 bambiInfo("Arming try %d/%d", m_armingTries, MAX_ARMING_TRIES);
@@ -216,7 +224,26 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
 
     case State::TAKING_OFF:
         if (command == Command::MISSIONTRIGGER) {
-            ROS_INFO("Mission trigger received but not handled");
+             auto missionTriggerMsg = (mavros_msgs::BambiMissionTrigger*)msg;
+             if(!missionTriggerMsg->startStop){
+                 ROS_INFO("Mission aborting...");
+                 bambiInfo("Aborting mission..");
+                 mavros_msgs::SetMode commandSetMode;
+                 commandSetMode.request.base_mode = 1; //stands for MAV_MODE_FLAG_CUSTOM_MODE_ENABLED
+                 commandSetMode.request.custom_mode = "AUTO.LAND";
+                 if(m_publisher.setMode(commandSetMode)){
+                     ROS_INFO("Lending command successfully sent");
+                     bambiInfo("Lending Command sent");
+                     changeState(State::READY);
+                 }else{
+                     ROS_ERROR("Landing command rejected...waiting for reset");
+                     bambiError("LANDING COMMAND REJECTED,waiting for reset");
+                     changeState(State::WAITING_FOR_RESET);
+                 }
+
+             }else{
+                 ROS_INFO("Mission trigger received but not handled");
+             }
         } else if (command == Command::GLOBAL_POSITION_UPDATE) {
 
             if (m_lastAltitude.relative > m_missionTriggerStart.altitudeTakeoff-0.1f){
@@ -264,7 +291,20 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
 
     case State::CHANGING_TO_AUTO_MODE:
         if (command == Command::MISSIONTRIGGER) {
-            ROS_INFO("Mission trigger received but not handled");
+            auto missionTriggerMsg = (mavros_msgs::BambiMissionTrigger*)msg;
+            if(!missionTriggerMsg->startStop){
+                ROS_INFO("Mission aborting...");
+                bambiInfo("Aborting mission..");
+                if(triggerRTL()){
+                    changeState(State::MISSION_CANCELLING_RTL);
+                } else{
+                    ROS_ERROR("RTL command rejected...waiting for reset");
+                    bambiError("RTL COMMAND REJECTED,waiting for reset");
+                    changeState(State::WAITING_FOR_RESET);
+                }
+            } else{
+                ROS_INFO("Mission trigger received but not handled");
+            }
         } else if (command == Command::CHANGE_MODE_TIMER_SHOT) {
             //change mode to AUTO.MISSION
             bambiInfo("Request to change mode to AUTO.MISSION");
@@ -289,7 +329,20 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
         break;    
     case State::STARTING_PHOTO_MISSION:
         if (command == Command::MISSIONTRIGGER) {
-            ROS_INFO("Mission trigger received but not handled");
+            auto missionTriggerMsg = (mavros_msgs::BambiMissionTrigger*)msg;
+            if(!missionTriggerMsg->startStop){
+                ROS_INFO("Mission aborting...");
+                bambiInfo("Aborting mission..");
+                if(triggerRTL()){
+                    changeState(State::MISSION_CANCELLING_RTL);
+                } else{
+                    ROS_ERROR("RTL command rejected...waiting for reset");
+                    bambiError("RTL COMMAND REJECTED,waiting for reset");
+                    changeState(State::WAITING_FOR_RESET);
+                }
+            } else{
+                ROS_INFO("Mission trigger received but not handled");
+            }
 
         }else if (command == Command::UAV_MODE_UPDATE){
             if (m_lastUavMode == "AUTO.MISSION"){
@@ -313,7 +366,20 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
 
     case State::REACHING_MISSION_START_POINT:
         if (command == Command::MISSIONTRIGGER) {
-            ROS_INFO("Mission trigger received but not handled");
+            auto missionTriggerMsg = (mavros_msgs::BambiMissionTrigger*)msg;
+            if(!missionTriggerMsg->startStop){
+                ROS_INFO("Mission aborting...");
+                bambiInfo("Aborting mission..");
+                if(triggerRTL()){
+                    changeState(State::MISSION_CANCELLING_RTL);
+                } else{
+                    ROS_ERROR("RTL command rejected...waiting for reset");
+                    bambiError("RTL COMMAND REJECTED,waiting for reset");
+                    changeState(State::WAITING_FOR_RESET);
+                }
+            } else{
+                ROS_INFO("Mission trigger received but not handled");
+            }
         } else if (command == Command::MISSION_ITEM_REACHED){
             bambiInfo("WP reached");
             //we have reached the mission starting point
@@ -330,7 +396,20 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
 
     case State::TAKING_ORTHO_PHOTO:
         if (command == Command::MISSIONTRIGGER) {
-            ROS_INFO("Mission trigger received but not handled");
+            auto missionTriggerMsg = (mavros_msgs::BambiMissionTrigger*)msg;
+            if(!missionTriggerMsg->startStop){
+                ROS_INFO("Mission aborting...");
+                bambiInfo("Aborting mission..");
+                if(triggerRTL()){
+                    changeState(State::MISSION_CANCELLING_RTL);
+                } else{
+                    ROS_ERROR("RTL command rejected...waiting for reset");
+                    bambiError("RTL COMMAND REJECTED,waiting for reset");
+                    changeState(State::WAITING_FOR_RESET);
+                }
+            } else{
+                ROS_INFO("Mission trigger received but not handled");
+            }
         } else if (command == Command::ORTHO_PHOTO_READY) {
             auto photo = (bambi_msgs::OrthoPhoto*)msg;
             bambiInfo("Orthophoto Saved");
@@ -347,7 +426,20 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
         break;
     case State::GENERATING_BOUNDARY:
         if (command == Command::MISSIONTRIGGER) {
-            ROS_INFO("Mission trigger received but not handled");
+            auto missionTriggerMsg = (mavros_msgs::BambiMissionTrigger*)msg;
+            if(!missionTriggerMsg->startStop){
+                ROS_INFO("Mission aborting...");
+                bambiInfo("Aborting mission..");
+                if(triggerRTL()){
+                    changeState(State::MISSION_CANCELLING_RTL);
+                } else{
+                    ROS_ERROR("RTL command rejected...waiting for reset");
+                    bambiError("RTL COMMAND REJECTED,waiting for reset");
+                    changeState(State::WAITING_FOR_RESET);
+                }
+            } else{
+                ROS_INFO("Mission trigger received but not handled");
+            }
         } else if (command == Command::BOUNDARY_GENERATED) {
 
             bambiInfo("CPP AP=%6.2f %6.2f %4.1f HP=%6.2f %6.2f %4.1f", m_homeGlobalPosition.latitude,
@@ -393,7 +485,20 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
         break;
     case State::COVERAGE_PATH_PLANNING:
         if (command == Command::MISSIONTRIGGER) {
-            ROS_INFO("Mission trigger received but not handled");
+            auto missionTriggerMsg = (mavros_msgs::BambiMissionTrigger*)msg;
+            if(!missionTriggerMsg->startStop){
+                ROS_INFO("Mission aborting...");
+                bambiInfo("Aborting mission..");
+                if(triggerRTL()){
+                    changeState(State::MISSION_CANCELLING_RTL);
+                } else{
+                    ROS_ERROR("RTL command rejected...waiting for reset");
+                    bambiError("RTL COMMAND REJECTED,waiting for reset");
+                    changeState(State::WAITING_FOR_RESET);
+                }
+            } else{
+                ROS_INFO("Mission trigger received but not handled");
+            }
         } else if (command == Command::COVERAGE_PATH_READY) {
             changeState(State::GENERATING_TRAJECTORY);
             ROS_INFO("INVOKING TRAJECTORY GENERATOR");
@@ -418,7 +523,20 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
         break;
     case State::GENERATING_TRAJECTORY:
         if (command == Command::MISSIONTRIGGER) {
-            ROS_INFO("Mission trigger received but not handled");
+            auto missionTriggerMsg = (mavros_msgs::BambiMissionTrigger*)msg;
+            if(!missionTriggerMsg->startStop){
+                ROS_INFO("Mission aborting...");
+                bambiInfo("Aborting mission..");
+                if(triggerRTL()){
+                    changeState(State::MISSION_CANCELLING_RTL);
+                } else{
+                    ROS_ERROR("RTL command rejected...waiting for reset");
+                    bambiError("RTL COMMAND REJECTED,waiting for reset");
+                    changeState(State::WAITING_FOR_RESET);
+                }
+            } else{
+                ROS_INFO("Mission trigger received but not handled");
+            }
         } else if (command == Command::TRAJECTORY_READY) {
             changeState(State::COVERAGE_FLIGHT);
             auto trajectory = (bambi_msgs::Trajectory*) msg;
@@ -437,7 +555,20 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
         break;
     case State::COVERAGE_FLIGHT:
         if (command == Command::MISSIONTRIGGER) {
-            ROS_INFO("Mission trigger received but not handled");
+            auto missionTriggerMsg = (mavros_msgs::BambiMissionTrigger*)msg;
+            if(!missionTriggerMsg->startStop){
+                ROS_INFO("Mission aborting...");
+                bambiInfo("Aborting mission..");
+                if(triggerRTL()){
+                    changeState(State::MISSION_CANCELLING_RTL);
+                } else{
+                    ROS_ERROR("RTL command rejected...waiting for reset");
+                    bambiError("RTL COMMAND REJECTED,waiting for reset");
+                    changeState(State::WAITING_FOR_RESET);
+                }
+            } else{
+                ROS_INFO("Mission trigger received but not handled");
+            }
         } else if (command == Command::COVERAGE_FC_REACHED_HOME) {
             bambiInfo("Home reached!!! Almost done fellow");
             ROS_INFO("We reached HOME!!!!");
@@ -449,14 +580,13 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
                 bambi_msgs::CoverageFlightTrigger ft;
                 ft.startStop = false;
                 m_publisher.triggerCoverageFlight(ft);
-                //mission start command send (i.e change mode to AUTO.MISSION)
                 changeState(State::LANDING);
             } else {
-                bambiError("CANNOT SET AUTO.LAND mode => READY state");
+                bambiError("CANNOT SET AUTO.LAND mode => W_F_R state");
                 // TODO RTL?
-                //Not able to change mode and start mission
-                changeState(State::READY);
-                ROS_WARN("LANDING REJECTED");
+                //Not able to change mode
+                changeState(State::WAITING_FOR_RESET);
+                ROS_WARN("LANDING REJECTED Restart the system");
             }
         } else if (command == Command::GLOBAL_POSITION_UPDATE // not used for now, maybe in FlightController
                     ) {
@@ -471,12 +601,11 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
         } else if (command == Command::LANDED_STATE_UPDATE) {
             // auto extendedState = static_cast<mavros_msgs::ExtendedState*>(msg); NOT NECESSARY BECAUSE WE HAVE IT IN MEMBER
             if (m_lastUavLandedState == mavros_msgs::ExtendedState::LANDED_STATE_ON_GROUND) {
-                bambiInfo("Successfully landed(!), SWITCH ME OFF PLZ");
+                bambiInfo("Successfully landed(!)");
                 ROS_INFO("Successfully landed(!)");
                 changeState(State::READY);
             }
-        } else if (command == Command::GLOBAL_POSITION_UPDATE // not used for now, maybe in FlightController
-                   ) {
+        } else if (command == Command::GLOBAL_POSITION_UPDATE) {
            // ignore
         } else {
             ROS_WARN("Ignoring command %s in state LANDING", commandToStringMap.at(command));
@@ -485,19 +614,46 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
     case State::MISSION_CANCELLING_RTL:
         if (command == Command::MISSIONTRIGGER) {
             bambiWarn("Mission Aborted RTL now!!!");
-
-
             ROS_INFO("Mission trigger received but not handled");
+        } else if (command == Command::LANDED_STATE_UPDATE) {
+            // auto extendedState = static_cast<mavros_msgs::ExtendedState*>(msg); NOT NECESSARY BECAUSE WE HAVE IT IN MEMBER
+            if (m_lastUavLandedState == mavros_msgs::ExtendedState::LANDED_STATE_ON_GROUND) {
+                bambiInfo("Successfully landed(!)");
+                ROS_INFO("Successfully landed(!)");
+                changeState(State::READY);
+            }
         } else {
             ROS_WARN("Ignoring command %s in state MISSION_CANCELLING_RTL", commandToStringMap.at(command));
         }
+        break;
+
+        //TODO implement error detection which takes the state machine to WAITING_FOR_RESET state
+    case State::WAITING_FOR_RESET:
+        ROS_INFO("Waiting to be resetted");
+        bambiInfo("Waiting for reset");
         break;
     }
 }
 
 void StateMachine::changeState(StateMachine::State newState) {
   ROS_INFO("STATE MACHINE STATE CHANGE %s ==> %s", stateToStringMap.at(m_state), stateToStringMap.at(newState));
+  bambiDebug("%s ==> %s", stateToStringMap.at(m_state), stateToStringMap.at(newState));
   m_state = newState;
+}
+
+bool StateMachine::triggerRTL()
+{
+    mavros_msgs::SetMode commandSetMode;
+    commandSetMode.request.base_mode = 1; //stands for MAV_MODE_FLAG_CUSTOM_MODE_ENABLED
+    commandSetMode.request.custom_mode = "AUTO.RTL";
+     if(m_publisher.setMode(commandSetMode)){
+        bambiInfo("RTL mode change command successfully");
+        return true;
+     } else{
+         bambiError("Cannot switch to RTL, BRING ME HOME!!!");
+         return false;
+     }
+
 }
 
 
@@ -560,20 +716,21 @@ void StateMachine::bambiError(const char format[], ...){
  */
 
 const std::map<StateMachine::State, const char *>  StateMachine::stateToStringMap = {
-  { StateMachine::State::INIT, "INIT" },
-  { StateMachine::State::READY, "READY" },
-  { StateMachine::State::ARMING, "ARMING" },
-  { StateMachine::State::TAKING_OFF, "TAKING_OFF" },
-  { StateMachine::State::CHANGING_TO_AUTO_MODE, "CHANGING_TO_AUTO_MODE"},
-  { StateMachine::State::STARTING_PHOTO_MISSION, "STARTING_PHOTO_MISSION" },
-  { StateMachine::State::REACHING_MISSION_START_POINT, "REACHING_MISSION_START_POINT" },
-  { StateMachine::State::TAKING_ORTHO_PHOTO, "TAKING_ORTHO_PHOTO" },
-  { StateMachine::State::GENERATING_BOUNDARY, "GENERATING_BOUNDARY" },
-  { StateMachine::State::COVERAGE_PATH_PLANNING, "COVERAGE_PATH_PLANNING" },
-  { StateMachine::State::GENERATING_TRAJECTORY, "GENERATING_TRAJECTORY" },
-  { StateMachine::State::COVERAGE_FLIGHT, "COVERAGE_FLIGHT" },
-  { StateMachine::State::LANDING, "LANDING" },
-  { StateMachine::State::MISSION_CANCELLING_RTL, "MISSION_CANCELLING_RTL" },
+    { StateMachine::State::INIT, "INIT" },
+    { StateMachine::State::READY, "READY" },
+    { StateMachine::State::ARMING, "ARMING" },
+    { StateMachine::State::TAKING_OFF, "TAKING_OFF" },
+    { StateMachine::State::CHANGING_TO_AUTO_MODE, "CHANGING_TO_AUTO_MODE"},
+    { StateMachine::State::STARTING_PHOTO_MISSION, "STARTING_PHOTO_MISSION" },
+    { StateMachine::State::REACHING_MISSION_START_POINT, "REACHING_MISSION_START_POINT" },
+    { StateMachine::State::TAKING_ORTHO_PHOTO, "TAKING_ORTHO_PHOTO" },
+    { StateMachine::State::GENERATING_BOUNDARY, "GENERATING_BOUNDARY" },
+    { StateMachine::State::COVERAGE_PATH_PLANNING, "COVERAGE_PATH_PLANNING" },
+    { StateMachine::State::GENERATING_TRAJECTORY, "GENERATING_TRAJECTORY" },
+    { StateMachine::State::COVERAGE_FLIGHT, "COVERAGE_FLIGHT" },
+    { StateMachine::State::LANDING, "LANDING" },
+    { StateMachine::State::MISSION_CANCELLING_RTL, "MISSION_CANCELLING_RTL" },
+    { StateMachine::State::WAITING_FOR_RESET, "WAITING_FOR_RESET" },
 };
 
 const std::map<StateMachine::Command, const char *>  StateMachine::commandToStringMap = {

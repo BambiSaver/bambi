@@ -76,20 +76,22 @@ public:
     
 
     enum class State {
-      INIT,
-      READY,
-      ARMING,
-      TAKING_OFF,
-      CHANGING_TO_AUTO_MODE,
-      STARTING_PHOTO_MISSION,
-      REACHING_MISSION_START_POINT,
-      TAKING_ORTHO_PHOTO,
-      GENERATING_BOUNDARY,
-      COVERAGE_PATH_PLANNING,
-      GENERATING_TRAJECTORY,
-      COVERAGE_FLIGHT,
-      LANDING,
-      MISSION_CANCELLING_RTL
+        INIT,
+        READY,
+        ARMING,
+        TAKING_OFF,
+        CHANGING_TO_AUTO_MODE,
+        STARTING_PHOTO_MISSION,
+        REACHING_MISSION_START_POINT,
+        TAKING_ORTHO_PHOTO,
+        GENERATING_BOUNDARY,
+        COVERAGE_PATH_PLANNING,
+        GENERATING_TRAJECTORY,
+        COVERAGE_FLIGHT,
+        LANDING,
+        MISSION_CANCELLING_RTL,
+        WAITING_FOR_RESET
+
     };
     
     enum class Command {
@@ -113,6 +115,7 @@ private:
     void handleStateMachineCommand(Command command, const void* msg);
     void changeState(State newState);
 
+    bool triggerRTL();
     void bambiInfo(const char* format, ...);
     void bambiDebug(const char* format, ...);
     void bambiWarn(const char* format, ...);
