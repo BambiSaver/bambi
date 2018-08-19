@@ -1,0 +1,50 @@
+#! /usr/bin/env python
+# encoding: utf-8
+#
+# Credits to: Res Andy 
+
+import os, re, sys, time, socket, urllib
+from settings import camaddr
+from settings import camport
+
+srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+srv.connect((camaddr, camport))
+
+srv.send('{"msg_id":257,"token":0}')
+
+data = srv.recv(512)
+if "rval" in data:
+	token = re.findall('"param": (.+) }',data)[0]	
+else:
+	data = srv.recv(512)
+	if "rval" in data:
+		token = re.findall('"param": (.+) }',data)[0]	
+
+print data
+
+tosend = '{"msg_id":769,"token":%s}' %token
+srv.send(tosend)
+data = srv.recv(512)
+print data
+
+data = srv.recv(512)
+print data
+
+data = srv.recv(512)
+print data
+
+data = srv.recv(512)
+print data
+
+token = re.findall('"param":"(.+)"}', data)[0]
+print token
+
+url = "http://" + str(camaddr) + "/"
+toReplace = re.escape("/tmp/fuse_d/")
+url = re.sub(toReplace, url, token)
+
+fileName = '$BAMBI_OWNCLOUD_HOME/yi-cam-pic-' + datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S') + '.jpg'
+fileName = os.path.expandvars(fileName)
+
+print url
+urllib.urlretrieve(url, filename=fileName)
