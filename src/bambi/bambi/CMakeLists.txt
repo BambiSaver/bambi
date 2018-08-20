@@ -84,6 +84,8 @@ target_link_libraries(${PROJECT_NAME}_flight_controller ${PROJECT_NAME} ${catkin
 ## in contrast to setup.py, you can choose the destination
 install(PROGRAMS
    scripts/optical_cam/optical_cam
+   scripts/optical_cam/settings.py
+   scripts/optical_cam/camera_photo.py
    scripts/boundary_generator/boundary_generator
    scripts/kml_generator/kml_generator
    scripts/terrain_data_provider/terrain_data_provider

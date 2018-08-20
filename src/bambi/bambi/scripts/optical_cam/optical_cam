@@ -2,12 +2,18 @@
 # -*- coding: utf-8 -*-
 
 import roslib
+roslib.load_manifest('bambi')
 roslib.load_manifest('bambi_msgs')
 import rospy
 import sys
 import os
 
+#import bambi.orthoPhotoNode
+
+import camera_photo
+
 from bambi_msgs.msg import OrthoPhoto
+from sensor_msgs.msg import NavSatFix
 from std_msgs.msg import Bool
 
 
@@ -18,8 +24,25 @@ class OrthoPhotoNode():
                                                     OrthoPhoto, queue_size=5)
 
         rospy.Subscriber('/bambi/mission_controller/trigger_shutter', Bool, self.cb_shutter_trigger)
-
+        rospy.Subscriber('/mavros/global_position/global', NavSatFix, self.cb_global_position_update)
+        self.m_timer = rospy.Timer(rospy.Duration(5), self.cb_shutter_timer)
         rospy.spin()
+
+    def cb_shutter_timer(self, event):
+        rospy.loginfo('Shutter timer called, trying to take photo with yi cam now')
+        fileName = ''
+        try:
+            fileName = camera_photo.take_photo()
+        except:
+            rospy.logwarn('Taking photo failed')
+
+        if fileName !='':
+            rospy.loginfo('Took photo, into file "' + fileName + '" @(' + str(self.m_globalPosition.latitude) + ',' + str(self.m_globalPosition.longitude) + ')')
+
+
+    def cb_global_position_update(self, NavSatFix):
+        rospy.loginfo_throttle(5, 'Updating global position in OrthoPhoto Node')
+        self.m_globalPosition = NavSatFix
 
         
     def cb_shutter_trigger(self, Bool):
