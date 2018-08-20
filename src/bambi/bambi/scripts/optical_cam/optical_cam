@@ -7,6 +7,7 @@ roslib.load_manifest('bambi_msgs')
 import rospy
 import sys
 import os
+import datetime
 
 #import bambi.orthoPhotoNode
 
@@ -15,6 +16,7 @@ import camera_photo
 from bambi_msgs.msg import OrthoPhoto
 from sensor_msgs.msg import NavSatFix
 from std_msgs.msg import Bool
+from mavros_msgs.msg import Altitude
 
 
 class OrthoPhotoNode():
@@ -25,25 +27,63 @@ class OrthoPhotoNode():
 
         rospy.Subscriber('/bambi/mission_controller/trigger_shutter', Bool, self.cb_shutter_trigger)
         rospy.Subscriber('/mavros/global_position/global', NavSatFix, self.cb_global_position_update)
+        rospy.Subscriber('/mavros/altitude', Altitude, self.cb_altitude_update)
         self.m_timer = rospy.Timer(rospy.Duration(5), self.cb_shutter_timer)
         rospy.spin()
 
     def cb_shutter_timer(self, event):
         rospy.loginfo('Shutter timer called, trying to take photo with yi cam now')
-        fileName = ''
+        key = datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
+        self.append_info_string_to_mission_data_file(key)
+        photoFileName = ''
         try:
-            fileName = camera_photo.take_photo()
+            photoFileName = camera_photo.take_photo()
         except:
             rospy.logwarn('Taking photo failed')
 
-        if fileName !='':
-            rospy.loginfo('Took photo, into file "' + fileName + '" @(' + str(self.m_globalPosition.latitude) + ',' + str(self.m_globalPosition.longitude) + ')')
+        if photoFileName !='':
+            rospy.loginfo('Took photo, into file "' + photoFileName + '" @(' + str(self.m_globalPosition.latitude) + ',' + str(self.m_globalPosition.longitude) + ')')
+            self.append_info_string_to_mission_data_file(photoFileName)
+
+
+    def create_info_string(self):
+        infoString = ''
+        infoString += ';' + str(self.m_globalPosition.latitude)
+        infoString += ';' + str(self.m_globalPosition.longitude)
+        infoString += ';' + str(self.m_globalPosition.altitude)
+        infoString += ';' + str(self.m_altitude.monotonic)
+        infoString += ';' + str(self.m_altitude.amsl)
+        infoString += ';' + str(self.m_altitude.local)
+        infoString += ';' + str(self.m_altitude.relative)
+        infoString += ';' + str(self.m_altitude.terrain)
+        return infoString
+
+
+
+    def append_info_string_to_mission_data_file(self, key):
+        missionDataFileName = '$BAMBI_OWNCLOUD_HOME/missiondata.csv'
+        missionDataFileName = os.path.expandvars(missionDataFileName)
+        if os.path.exists(missionDataFileName):
+            append_write = 'a' # append if already exists
+        else:
+            append_write = 'w' # make a new file if not
+
+        with open(missionDataFileName,append_write) as missionDataFile:
+            infoString = self.create_info_string()
+            if append_write == 'w':
+                missionDataFile.write('Key;GPS.Latitude;GPS.Longitude;GPS.Altitude;Altitude.Monotonic;Altitude.Amsl;Altitude.Local;Altitude.Relative;Altitude.Terrain\n')
+            missionDataFile.write(key + infoString + '\n')
+            absoluteFileName = os.path.abspath(missionDataFileName)
+            rospy.loginfo('Wrote to' + str(absoluteFileName))
 
 
     def cb_global_position_update(self, NavSatFix):
         rospy.loginfo_throttle(5, 'Updating global position in OrthoPhoto Node')
         self.m_globalPosition = NavSatFix
 
+    def cb_altitude_update(self, Altitude):
+        rospy.loginfo_throttle(5, 'Updating altitude in OrthoPhoto Node')
+        self.m_altitude = Altitude
         
     def cb_shutter_trigger(self, Bool):
         # Set the message to publish as our custom message.
