@@ -28,7 +28,9 @@ class OrthoPhotoNode():
         rospy.Subscriber('/bambi/mission_controller/trigger_shutter', Bool, self.cb_shutter_trigger)
         rospy.Subscriber('/mavros/global_position/global', NavSatFix, self.cb_global_position_update)
         rospy.Subscriber('/mavros/altitude', Altitude, self.cb_altitude_update)
-        self.m_timer = rospy.Timer(rospy.Duration(5), self.cb_shutter_timer)
+        self.m_timer = rospy.Timer(rospy.Duration(8), self.cb_shutter_timer)
+	self.m_altitude = Altitude()
+	self.m_globalPosition = NavSatFix()
         rospy.spin()
 
     def cb_shutter_timer(self, event):
@@ -38,10 +40,10 @@ class OrthoPhotoNode():
         photoFileName = ''
         try:
             photoFileName = camera_photo.take_photo()
-        except:
-            rospy.logwarn('Taking photo failed')
+        except Exception as e:
+            rospy.logwarn('Taking photo failed: ' + str(e))
 
-        if photoFileName !='':
+        if photoFileName != '':
             rospy.loginfo('Took photo, into file "' + photoFileName + '" @(' + str(self.m_globalPosition.latitude) + ',' + str(self.m_globalPosition.longitude) + ')')
             self.append_info_string_to_mission_data_file(photoFileName)
 
