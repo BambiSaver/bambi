@@ -41,6 +41,11 @@ add_library(${PROJECT_NAME}
    src/mission_controller/lib/mcpublisher.cpp
    src/flight_controller/lib/flightcontrollernode.cpp
    src/coverage_path_planner/lib/coveragepathplannernode.cpp
+   src/coverage_path_planner/lib/common.cpp
+   src/coverage_path_planner/lib/advancedwavefrontsolver.cpp
+   src/coverage_path_planner/lib/cellpriority.cpp
+   src/coverage_path_planner/lib/distancepriority.cpp
+   src/coverage_path_planner/lib/isolatedfieldpriority.cpp
    src/coverage_path_planner/lib/spline/spline/src/main/cpp/Bezier.cpp
    src/coverage_path_planner/lib/spline/spline/src/main/cpp/BSpline.cpp
    src/coverage_path_planner/lib/spline/spline/src/main/cpp/CatmullRom.cpp

@@ -48,6 +48,8 @@
 
 #include "../lib/spline/spline/src/main/cpp/BSpline.h"
 
+#include "advancedwavefrontsolver.h"
+
 
 using namespace bambi::coverage_path_planner;
 
@@ -105,10 +107,10 @@ std::pair<int, int> getIndexOfMatrixByPoint(double _N, double _E, double start_N
     return t;
 }
 
-bool checkIfToPutNextStep(boost::multi_array<int, 2>& matrix, int i, int j, int currentStep) {
+bool checkIfToPutNextStep(boost::multi_array<int, 2>& matrix, int i, int j) {
     if (matrix[i][j] == -1) {
         // not initialized
-        matrix[i][j] = currentStep + 1;
+        // MOVED TO CALLER FUNCTION: matrix[i][j] = currentStep + 1;
         return true;
     }/* else if (matrix[i][j] > 0) {
         // do nothing, because we passed already here, probably in a quicker way
@@ -377,10 +379,6 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
 
 
 
-
-
-
-
     geographic_msgs::GeoPoint currentPosition = geodesy::toMsg(fieldCoverageInfo.current_position.geopos_2d.latitude, fieldCoverageInfo.current_position.geopos_2d.longitude);
     geodesy::UTMPoint currentPositionUTM(currentPosition);
 
@@ -388,6 +386,46 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
     // SOLUTION: check if the neighborfields are accessable (=-1) and not =(-2), and if not, choose a random accessable position to start
 
     index = getIndexOfMatrixByPoint(currentPositionUTM.northing, currentPositionUTM.easting, bottomBorder_N, leftBorder_E, minDimFootprint);
+
+
+
+
+
+    /*************************************************
+     *         TEST ADVANCED WAVEFRONTSOLVER
+     ************************************************/
+
+    boost::shared_ptr<AdvancedWaveFrontSolver> solver(new AdvancedWaveFrontSolver(n_E, n_N));
+
+    for (int i = 1; i <= n_N + 1; ++i) {
+        for (int j = 1; j <= n_E+ 1; ++j) {
+            if (matrix[i][j] == -1) {
+                solver->markCoverageCell(index_t(j,i));
+            }
+        }
+    }
+
+
+    solver->setStartCell(index_t(index.second + 1, index.first + 1));
+
+    solver->solveCoveragePath();
+
+
+
+    /*************************************************
+     *       TEST ADVANCED WAVEFRONTSOLVER END
+     ************************************************/
+
+
+
+
+
+
+
+
+
+
+
 
     std::queue<std::pair<int, int>> cellQueue;
     cellQueue.push(index);
@@ -401,13 +439,38 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
         auto current = cellQueue.front();
 
         auto cellValue = matrix[current.first][current.second];
+        float cellAltitude = terrainDataMatrix[current.first][current.second];
 
         for (int i = current.first - 1; i <= current.first +1; ++i) {
             for (int j = current.second - 1; j <= current.second +1; ++j) {
                 if (i == current.first && j == current.second)
                     // skip same field
                     continue;
-                if (checkIfToPutNextStep(matrix, i, j, cellValue)) {
+                if (checkIfToPutNextStep(matrix, i, j)) {
+                    float slope = (terrainDataMatrix[i][j] - cellAltitude) / minDimFootprint;
+                    //ROS_INFO("SLOPE: %.2f", slope);
+
+                    int penalty = 0;
+
+                    if (slope > 0.2f) {
+                        ++penalty;
+                        if (slope > 0.4f) {
+                            ++penalty;
+                            if (slope > 0.6f) {
+                                ++penalty;
+                            }
+                        }
+                    } else if (slope < 0.2f) {
+                        --penalty;
+                        if (slope < 0.4f) {
+                            --penalty;
+                            if (slope < 0.6f) {
+                                --penalty;
+                            }
+                        }
+                    }
+
+                    matrix[i][j] = cellValue + 4 + penalty;
                     cellQueue.push(std::pair<int,int>(i, j));
                 }
             }
