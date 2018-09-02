@@ -50,7 +50,6 @@ public:
 
     enum class State {
         READY,
-        TRAJECTORY_RECEIVED,
         PUBLISHING_FIRST_POINTS, // wait a few seconds before changing mode
         WAITING_FOR_MODE_CHANGE,
         FLYING,

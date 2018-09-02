@@ -297,7 +297,6 @@ mavros_msgs::PositionTarget FlightControllerNode::createStartPositionTarget()
 const std::map<FlightControllerNode::State, const char *>  FlightControllerNode::stateToStringMap = {
 
   { FlightControllerNode::State::READY, "READY" },
-  { FlightControllerNode::State::TRAJECTORY_RECEIVED, "TRAJECTORY_RECEIVED" },
   { FlightControllerNode::State::PUBLISHING_FIRST_POINTS, "PUBLISHING_FIRST_POINTS" },
   { FlightControllerNode::State::WAITING_FOR_MODE_CHANGE, "WAITING_FOR_MODE_CHANGE" },
   { FlightControllerNode::State::FLYING, "FLYING" },
