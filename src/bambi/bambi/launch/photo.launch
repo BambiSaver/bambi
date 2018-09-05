@@ -1,4 +1,4 @@
 <launch>
   <!-- Run optical_cam node under "bambi" namespace -->
-  <node name="optical_cam" output="screen" ns="bambi" pkg="bambi" type="optical_cam"/>
+  <node name="optical_cam" args="--enable-continous-shutter" output="screen" ns="bambi" pkg="bambi" type="optical_cam"/>
 </launch>

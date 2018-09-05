@@ -6,6 +6,7 @@ roslib.load_manifest('bambi')
 roslib.load_manifest('bambi_msgs')
 import rospy
 import sys
+import argparse
 import os
 import datetime
 
@@ -21,16 +22,17 @@ from mavros_msgs.msg import Altitude
 
 class OrthoPhotoNode():
     
-    def __init__(self):
+    def __init__(self,triggerOrthoPhotoTimer):
         self.m_orthoPhotoPublisher = rospy.Publisher("~ortho_photo_ready",
                                                     OrthoPhoto, queue_size=5)
 
         rospy.Subscriber('/bambi/mission_controller/trigger_shutter', Bool, self.cb_shutter_trigger)
         rospy.Subscriber('/mavros/global_position/global', NavSatFix, self.cb_global_position_update)
         rospy.Subscriber('/mavros/altitude', Altitude, self.cb_altitude_update)
-        self.m_timer = rospy.Timer(rospy.Duration(8), self.cb_shutter_timer)
-	self.m_altitude = Altitude()
-	self.m_globalPosition = NavSatFix()
+        if triggerOrthoPhotoTimer:
+            self.m_timer = rospy.Timer(rospy.Duration(8), self.cb_shutter_timer)
+    	self.m_altitude = Altitude()
+    	self.m_globalPosition = NavSatFix()
         rospy.spin()
 
     def cb_shutter_timer(self, event):
@@ -101,8 +103,17 @@ if __name__ == '__main__':
     # Initialize the node and name it.
     rospy.init_node('optical_cam')
 
-    rospy.loginfo("OrthoPhoto STARTUP")
+    parser = argparse.ArgumentParser()
+    enable_parser = parser.add_mutually_exclusive_group(required=False)
+    enable_parser.add_argument("-e", "--enable-continous-shutter", action='store_true', dest='enable',
+                       help="Enable continuous yi CAM shutter signal.")
+    enable_parser.add_argument("-n", "--no-enable-continous-shutter", action='store_false', dest='enable',
+                       help="Disable continuous yi CAM shutter signal.")
+    enable_parser.set_defaults(enable=False)
+    args = parser.parse_args(rospy.myargv()[1:])
+
+    rospy.loginfo("OrthoPhoto STARTUP, with continous shutter timer " + ("enabled" if args.enable else "disabled"))
     # Go to class functions that do all the heavy lifting. Do error checking.
     try:
-        orthoPhotoNode = OrthoPhotoNode()
+        orthoPhotoNode = OrthoPhotoNode(args.enable)
     except rospy.ROSInterruptException: pass
