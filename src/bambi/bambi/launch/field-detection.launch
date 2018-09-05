@@ -1,0 +1,8 @@
+<launch>
+     <!-- Run optical_cam node under "bambi" namespace -->
+  <node name="optical_cam" ns="bambi" output="screen" pkg="bambi" type="optical_cam"/>
+  <!-- Run boundary_generator node under "bambi" namespace -->
+  <node name="boundary_generator" ns="bambi" output="screen" pkg="bambi" type="boundary_generator"/>
+  <!-- Run missioncontroller node under "bambi" namespace -->
+  <node name="mission_controller" ns="bambi" output="screen" pkg="bambi" type="mission_controller"/>
+</launch>
