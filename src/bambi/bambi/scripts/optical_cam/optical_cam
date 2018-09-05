@@ -82,11 +82,11 @@ class OrthoPhotoNode():
 
 
     def cb_global_position_update(self, NavSatFix):
-        rospy.loginfo_throttle(5, 'Updating global position in OrthoPhoto Node')
+        rospy.loginfo_throttle(50, "Receiving global position updates in OrthoPhoto Node")
         self.m_globalPosition = NavSatFix
 
     def cb_altitude_update(self, Altitude):
-        rospy.loginfo_throttle(5, 'Updating altitude in OrthoPhoto Node')
+        rospy.loginfo_throttle(50, "Receiving altitude updates in OrthoPhoto Node")
         self.m_altitude = Altitude
         
     def cb_shutter_trigger(self, Bool):

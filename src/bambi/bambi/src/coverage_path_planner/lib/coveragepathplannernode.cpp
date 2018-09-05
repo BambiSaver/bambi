@@ -470,7 +470,7 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
                         }
                     }
 
-                    matrix[i][j] = cellValue + 4 + penalty;
+                    matrix[i][j] = cellValue + 1 /* + 4 + penalty*/;
                     cellQueue.push(std::pair<int,int>(i, j));
                 }
             }
