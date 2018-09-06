@@ -506,7 +506,7 @@ void StateMachine::handleStateMachineCommand(StateMachine::Command command, cons
             pathWithConstraints.path = *((bambi_msgs::Path*)msg);
 
             // TODO get from m_missionTriggerStart (?)
-            pathWithConstraints.flight_constraints.max_velocity = 5.0;
+            pathWithConstraints.flight_constraints.max_velocity = 4.0;
             pathWithConstraints.flight_constraints.max_acceleration = 15.0;
             m_publisher.triggerTrajectoryGeneration(pathWithConstraints);
 

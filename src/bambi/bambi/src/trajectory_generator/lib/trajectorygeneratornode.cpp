@@ -30,6 +30,15 @@
 #include <Splines.hh>
 #include <cmath>
 
+// write to CSV file
+#include <cstdlib>
+#include <ros/time.h>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/algorithm/string.hpp>
+#include <fstream>
+
+#define ENABLE_VELOCITY_FEED_FORWARD
+
 
 using namespace bambi::trajectory_generator;
 
@@ -133,10 +142,16 @@ void TrajectoryGeneratorNode::generateTrajectory() {
     //prepare PositionTarget message
     mavros_msgs::PositionTarget posTargetLocal;
     posTargetLocal.coordinate_frame = mavros_msgs::PositionTarget::FRAME_LOCAL_NED;
-    posTargetLocal.type_mask = mavros_msgs::PositionTarget::IGNORE_AFX |
-            mavros_msgs::PositionTarget::IGNORE_AFY |
-            mavros_msgs::PositionTarget::IGNORE_AFZ |
-            mavros_msgs::PositionTarget::IGNORE_YAW_RATE;
+    posTargetLocal.type_mask = mavros_msgs::PositionTarget::IGNORE_AFX
+            | mavros_msgs::PositionTarget::IGNORE_AFY
+            | mavros_msgs::PositionTarget::IGNORE_AFZ
+            | mavros_msgs::PositionTarget::IGNORE_YAW_RATE
+#ifndef ENABLE_VELOCITY_FEED_FORWARD
+            | mavros_msgs::PositionTarget::IGNORE_VX
+            | mavros_msgs::PositionTarget::IGNORE_VY
+            | mavros_msgs::PositionTarget::IGNORE_VZ
+#endif
+            ;
 
 
     double residualDistFromPreviousSegment = 0.0;
@@ -174,7 +189,7 @@ void TrajectoryGeneratorNode::generateTrajectory() {
             unitDirectionVector.y = (j->y - i->y) / dist2D(*i, *j);
             // N.B.: altitude is treated differently: we don't make residual considerations,
             // because the ground speed is limited, not the speed in 3D --> we're using dist2D()
-            unitDirectionVector.alt = (j->alt - i->alt) / N;
+            unitDirectionVector.alt = static_cast<float>((static_cast<double>(j->alt) - i->alt) / N);
 
             for (int k = 0; k < N; ++k) {
                 posTargetLocal.position.x = i->x + ((k+1)*distanceBetweenAPairOfSamples - residualDistFromPreviousSegment) * unitDirectionVector.x;
@@ -203,6 +218,7 @@ void TrajectoryGeneratorNode::generateTrajectory() {
     ROS_INFO("GENERATED %zd SAMPLES to be used at a frequency of %.1fHz", m_pPositionTrajectoryENU->size(), m_setPointRate);
 
 
+
     CubicSplinePtr curveX = std::get<0>(curve);
     CubicSplinePtr curveY = std::get<1>(curve);
     CubicSplinePtr curveZ = std::get<2>(curve);
@@ -210,6 +226,22 @@ void TrajectoryGeneratorNode::generateTrajectory() {
     curveX->build();
     curveY->build();
     curveZ->build();
+
+    const char* ownCloudHomeEnv = std::getenv("BAMBI_OWNCLOUD_HOME");
+    std::string filePath = ownCloudHomeEnv == NULL ? "~/" : ownCloudHomeEnv;
+
+    auto time = ros::WallTime::now().toBoost();
+    auto timeString = boost::posix_time::to_simple_string(time);
+    boost::replace_all(timeString, " ", "-");
+    filePath.append("/trajectory-");
+    filePath.append(timeString);
+    filePath.append(".csv");
+
+    ROS_INFO("Saving generated trajectory to %s", filePath.c_str());
+
+    std::ofstream myfile;
+    myfile.open(filePath);
+    myfile << "t[s];x(t)[m];y(t)[m];z(t)[m];yaw(t)[deg];v_x(t)[m/s];v_y(t)[m/s];v_z(t)[m/s];yawrate(t)[deg/s];\n";
 
 
     for (int i = 0; i < m_pPositionTrajectoryENU->size(); ++i) {
@@ -223,16 +255,24 @@ void TrajectoryGeneratorNode::generateTrajectory() {
         setpoint.yaw = atan2(setpoint.velocity.y, setpoint.velocity.x);
         setpoint.yaw_rate = atan2(curveY->DD(t), curveX->DD(t));
 
-//        if (i > 0) {
-//            // calculate yaw for previous sample
-//            mavros_msgs::PositionTarget& previousSetpoint = m_pPositionTrajectoryENU->operator[](i-1);
-//            double deltaX = setpoint.velocity.x - previousSetpoint.velocity.x;
-//            double deltaY = setpoint.velocity.y - previousSetpoint.velocity.y;
-//            previousSetpoint.yaw_rate = atan2(deltaY, deltaX);
-//        }
+#ifndef ENABLE_VELOCITY_FEED_FORWARD
+        setpoint.velocity.x = 0.0;
+        setpoint.velocity.y = 0.0;
+        setpoint.velocity.z = 0.0;
+#endif
+        myfile << t << ";"
+               << setpoint.position.x << ";"
+               << setpoint.position.y << ";"
+               << setpoint.position.z << ";"
+               << (setpoint.yaw * 180.0 / M_PI) << ";"
+               << setpoint.velocity.x << ";"
+               << setpoint.velocity.y << ";"
+               << setpoint.velocity.z << ";"
+               << (setpoint.yaw_rate * 180.0 / M_PI) << ";\n";
     }
 
-//    m_pPositionTrajectoryENU->back().yaw_rate = 0.0;
+    myfile.close();
+
 }
 
 
