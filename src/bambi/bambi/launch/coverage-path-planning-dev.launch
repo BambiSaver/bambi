@@ -7,4 +7,7 @@
   <node name="coverage_path_planner" ns="bambi" output="screen" pkg="bambi" type="coverage_path_planner"/>
   <!-- Run missioncontroller node under "bambi" namespace -->
   <node name="mission_controller" ns="bambi" output="screen" pkg="bambi" type="mission_controller"/>
+  <!-- Run kml_generator node under "bambi" namespace -->
+  <node name="kml_generator" output="screen" ns="bambi" pkg="bambi" type="kml_generator"/>
+
 </launch>

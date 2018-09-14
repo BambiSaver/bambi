@@ -47,10 +47,10 @@
 #include <geometry_msgs/PoseStamped.h>
 
 #include "../lib/spline/spline/src/main/cpp/BSpline.h"
-
+#include "../lib/spline/spline/src/main/cpp/Bezier.h"
 #include "advancedwavefrontsolver.h"
 
-
+#include <stdio.h>
 using namespace bambi::coverage_path_planner;
 
 typedef boost::geometry::model::point<double, 2, boost::geometry::cs::cartesian> point_t;
@@ -102,8 +102,8 @@ geodesy::UTMPoint getUTMCenterPointFromCellIndex(double start_N, double start_E,
 
 std::pair<int, int> getIndexOfMatrixByPoint(double _N, double _E, double start_N, double start_E, float sensorFootprint) {
     std::pair<int, int> t;
-    t.first = std::floor((_N - start_N) / sensorFootprint);
-    t.second = std::floor((_E - start_E) / sensorFootprint);
+    t.first = std::floor((_N - start_N) / sensorFootprint)+1;
+    t.second = std::floor((_E - start_E) / sensorFootprint)+1;
     return t;
 }
 
@@ -217,7 +217,6 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
     std::vector<double> latitudes;
     std::vector<double> longitudes;
     polygon_t boostFieldBorderPolygon;
-
     for (auto point : fieldCoverageInfo.field.boundary_path) {
         geographic_msgs::GeoPoint geoPoint = geodesy::toMsg(point.latitude, point.longitude);
         latitudes.push_back(point.latitude);
@@ -303,7 +302,7 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
             }
         }
     }
-
+    printMatrix(matrix, n_N, n_E);
 
 
     /*************************************************
@@ -385,32 +384,43 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
     // TODO: We assume that current position is part of the field. --> may NOT be the case (?)
     // SOLUTION: check if the neighborfields are accessable (=-1) and not =(-2), and if not, choose a random accessable position to start
 
-    index = getIndexOfMatrixByPoint(currentPositionUTM.northing, currentPositionUTM.easting, bottomBorder_N, leftBorder_E, minDimFootprint);
+    //index = getIndexOfMatrixByPoint(currentPositionUTM.northing, currentPositionUTM.easting, bottomBorder_N, leftBorder_E, minDimFootprint);
 
+    geographic_msgs::GeoPoint homePosition = geodesy::toMsg(fieldCoverageInfo.home_position.latitude, fieldCoverageInfo.home_position.longitude);
+    geodesy::UTMPoint homePositionUTM(homePosition);
 
+    index = getIndexOfMatrixByPoint(homePositionUTM.northing, homePositionUTM.easting, bottomBorder_N, leftBorder_E, minDimFootprint);
 
+    ROS_INFO("Index of home position (%d, %d)", index.first, index.second);
 
 
     /*************************************************
      *         TEST ADVANCED WAVEFRONTSOLVER
      ************************************************/
 
-    boost::shared_ptr<AdvancedWaveFrontSolver> solver(new AdvancedWaveFrontSolver(n_E, n_N));
+//    boost::shared_ptr<AdvancedWaveFrontSolver> solver(new AdvancedWaveFrontSolver(n_E, n_N));
 
-    for (int i = 1; i <= n_N + 1; ++i) {
-        for (int j = 1; j <= n_E+ 1; ++j) {
-            if (matrix[i][j] == -1) {
-                solver->markCoverageCell(index_t(j,i));
-            }
-        }
-    }
-
-
-    solver->setStartCell(index_t(index.second + 1, index.first + 1));
-
-    solver->solveCoveragePath();
+//    for (int i = 1; i <= n_N + 1; ++i) {
+//        for (int j = 1; j <= n_E+ 1; ++j) {
+//            if (matrix[i][j] == -1) {
+//                solver->markCoverageCell(index_t(j,i));
+//            }
+//        }
+//    }
 
 
+//    solver->setStartCell(index_t(index.second + 1, index.first + 1));
+
+
+//    std::deque<index_t> indexPath = solver->solveCoveragePath();
+
+//    std::deque<geodesy::UTMPoint> trivialPointQueue;
+//    for (auto posInverted : indexPath){
+
+//        index_t position(posInverted.second, posInverted.first);
+//        auto utmPoint = getUTMCenterPointFromCellIndex(bottomBorder_N, leftBorder_E, position, minDimFootprint, bottomLeft);
+//        trivialPointQueue.push_back(utmPoint);
+//    }
 
     /*************************************************
      *       TEST ADVANCED WAVEFRONTSOLVER END
@@ -450,27 +460,27 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
                     float slope = (terrainDataMatrix[i][j] - cellAltitude) / minDimFootprint;
                     //ROS_INFO("SLOPE: %.2f", slope);
 
-                    int penalty = 0;
+//                    int penalty = 0;
 
-                    if (slope > 0.2f) {
-                        ++penalty;
-                        if (slope > 0.4f) {
-                            ++penalty;
-                            if (slope > 0.6f) {
-                                ++penalty;
-                            }
-                        }
-                    } else if (slope < 0.2f) {
-                        --penalty;
-                        if (slope < 0.4f) {
-                            --penalty;
-                            if (slope < 0.6f) {
-                                --penalty;
-                            }
-                        }
-                    }
+//                    if (slope > 0.2f) {
+//                        ++penalty;
+//                        if (slope > 0.4f) {
+//                            ++penalty;
+//                            if (slope > 0.6f) {
+//                                ++penalty;
+//                            }
+//                        }
+//                    } else if (slope < 0.2f) {
+//                        --penalty;
+//                        if (slope < 0.4f) {
+//                            --penalty;
+//                            if (slope < 0.6f) {
+//                                --penalty;
+//                            }
+//                        }
+//                    }
 
-                    matrix[i][j] = cellValue + 1 /* + 4 + penalty*/;
+                    matrix[i][j] = cellValue + 1 /*+ 4 + penalty*/;
                     cellQueue.push(std::pair<int,int>(i, j));
                 }
             }
@@ -521,6 +531,12 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
         cellQueue.pop();
     }
 
+    //For test only override the starting position
+//    myChosenStartPoint.first = 15;
+//    myChosenStartPoint.second = 10;
+
+    //
+
     ROS_INFO("START POINT = (%d, %d)", myChosenStartPoint.first, myChosenStartPoint.second);
 
 
@@ -570,6 +586,7 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
 
             auto utmPoint = getUTMCenterPointFromCellIndex(bottomBorder_N, leftBorder_E, currentPos, minDimFootprint, bottomLeft);
             // direction which ends at currentPosition
+
             trivialPointQueue.push_back(utmPoint);
             directionMatrix[currentPos.first][currentPos.second] = getDirection(currentPos, bestChoice);
 
@@ -585,13 +602,18 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
 
     printDirectionMatrix(directionMatrix, n_N, n_E);
 
+    printMatrix(matrix, n_N, n_E);
+
+
+
+
 
     //************************ COVERAGE FINISHED --> INTERPOLATING NOW *************************/
 
 
 //    trivialPointQueue.push_front(currentPositionUTM);
-    geographic_msgs::GeoPoint homePosition = geodesy::toMsg(fieldCoverageInfo.home_position.latitude, fieldCoverageInfo.home_position.longitude);
-    geodesy::UTMPoint homePositionUTM(homePosition);
+//    geographic_msgs::GeoPoint homePosition = geodesy::toMsg(fieldCoverageInfo.home_position.latitude, fieldCoverageInfo.home_position.longitude);
+//    geodesy::UTMPoint homePositionUTM(homePosition);
 
 //    trivialPointQueue.push_back(homePositionUTM);
 
@@ -606,12 +628,12 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
                                            fieldCoverageInfo.current_position.altitude_over_ground /* METERS */
                                            );
 
-
     // currentPos 4 times to start from here (?)
     xyzPath.push_back(currentPosVec);
     xyzPath.push_back(currentPosVec);
     xyzPath.push_back(currentPosVec);
     xyzPath.push_back(currentPosVec);
+
 
     // generate x y z
     for (auto p : trivialPointQueue) {
@@ -642,10 +664,26 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
     xyzPath.push_back(homePosVec);
     xyzPath.push_back(homePosVec);
 
+//TO MAKE MATLAB PLOT
+
+    FILE * pFile;
+      pFile = fopen ("/home/michael/CPP.txt","w+");
+      if (pFile == NULL) {
+              ROS_INFO("Opening the file failed.");
+          }else
+            ROS_INFO("Opening the file succeded.");
+      for (auto p: xyzPath){
+        fprintf (pFile, "%.4f, %.4f\n",p.x,p.y);
+      }
+      fclose (pFile);
+
+//
+
 
     double pathLength = 0.0;
     for (auto it = xyzPath.cbegin() + 1; it != xyzPath.cend(); ++it) {
         pathLength += ((*it) - (*(it-1))).length();
+
     }
 
     // set required resolution
@@ -679,7 +717,13 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
              static_cast<int>(xyzPath.size()), curve->node_count());
 
 
-
+    //For MATLAB output
+    pFile = fopen ("/home/michael/CPP-SPline.txt","w+");
+    if (pFile == NULL) {
+            ROS_INFO("Opening the file failed.");
+        }else
+          ROS_INFO("Opening the file succeded.");
+    //
     for (int i = 0; i < curve->node_count(); ++i) {
         const cppspline::Vector& v = curve->node(i);
         geodesy::UTMPoint p(v.x, v.y, bottomLeft.zone, bottomLeft.band);
@@ -701,7 +745,16 @@ void CoveragePathPlannerNode::cb_trigger_path_generation(const bambi_msgs::Field
 
         varForPublishingBambi.geometric_path.push_back(bambiPoint);
         varForPublishingRos.poses.push_back(poseStamped);
+
+        //FOR MATLAB OUTPUT
+        fprintf (pFile, "%.4f, %.4f\n",v.x,v.y);
+
+        //
+
     }
+    //For MATLAB output
+    fclose (pFile);
+    //
 
     ROS_INFO("Publishing BAMBI and RVIZ Paths with %d and %d points",
              static_cast<int>(varForPublishingBambi.geometric_path.size()),
